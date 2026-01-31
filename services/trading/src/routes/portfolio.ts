@@ -4,7 +4,10 @@
 
 import { FastifyPluginAsync } from 'fastify';
 import type { Portfolio, Balance, Position } from '@k2/types';
-import Decimal from 'decimal.js';
+import DecimalJS from 'decimal.js';
+const Decimal = DecimalJS.default || DecimalJS;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DecimalType = any;
 
 export const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
   const { exchangeRouter, logger } = fastify;
@@ -196,7 +199,7 @@ export const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
         acc[p.exchange].realized = acc[p.exchange].realized.plus(p.realizedPnl);
         return acc;
       },
-      {} as Record<string, { unrealized: Decimal; realized: Decimal }>
+      {} as Record<string, { unrealized: DecimalType; realized: DecimalType }>
     );
 
     return {

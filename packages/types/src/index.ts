@@ -198,6 +198,7 @@ export interface EventQuote extends Quote {
   noPrice: Decimal;  // 0-100 (cents)
   yesBid: Decimal;
   yesAsk: Decimal;
+  change24h: Decimal;
   volume24h: Decimal;
   openInterest: Decimal;
 }

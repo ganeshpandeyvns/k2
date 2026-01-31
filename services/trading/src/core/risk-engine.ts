@@ -4,7 +4,10 @@
 
 import type { Logger } from 'pino';
 import type { Order, RiskCheckResult, RiskCheck, RiskLimits } from '@k2/types';
-import Decimal from 'decimal.js';
+import DecimalJS from 'decimal.js';
+const Decimal = DecimalJS.default || DecimalJS;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DecimalType = any;
 
 // Default risk limits (can be customized per user)
 const DEFAULT_RISK_LIMITS: RiskLimits = {
@@ -30,10 +33,10 @@ export class RiskEngine {
   private userLimits: Map<string, RiskLimits> = new Map();
   private orderVelocity: Map<string, number[]> = new Map(); // userId -> timestamps
   private openOrderCounts: Map<string, number> = new Map();
-  private dailyVolumes: Map<string, Decimal> = new Map();
+  private dailyVolumes: Map<string, DecimalType> = new Map();
 
   // Mock price cache (in production, pull from market data service)
-  private priceCache: Map<string, Decimal> = new Map();
+  private priceCache: Map<string, DecimalType> = new Map();
 
   constructor(private logger: Logger) {
     // Initialize mock prices for common instruments
@@ -85,7 +88,7 @@ export class RiskEngine {
   /**
    * Update state after order is created
    */
-  recordOrderCreated(userId: string, notional: Decimal): void {
+  recordOrderCreated(userId: string, notional: DecimalType): void {
     // Track velocity
     const now = Date.now();
     const timestamps = this.orderVelocity.get(userId) || [];
@@ -127,7 +130,7 @@ export class RiskEngine {
   /**
    * Update price cache (called by market data service)
    */
-  updatePrice(instrument: string, price: Decimal): void {
+  updatePrice(instrument: string, price: DecimalType): void {
     this.priceCache.set(instrument, price);
   }
 

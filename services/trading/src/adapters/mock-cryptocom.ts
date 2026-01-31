@@ -4,7 +4,8 @@
 
 import { v4 as uuid } from 'uuid';
 import type { Logger } from 'pino';
-import Decimal from 'decimal.js';
+import DecimalJS from 'decimal.js';
+const Decimal = DecimalJS.default || DecimalJS;
 import type {
   ExchangeId,
   CreateOrderRequest,

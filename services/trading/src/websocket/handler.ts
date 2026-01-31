@@ -3,7 +3,7 @@
 // ============================================================================
 
 import type { FastifyRequest } from 'fastify';
-import type { WebSocket } from '@fastify/websocket';
+import type WebSocket from 'ws';
 import type {
   WsMessage,
   WsSubscribeMessage,
@@ -101,7 +101,7 @@ export async function wsHandler(
   }
 
   // Handle messages
-  socket.on('message', async (data) => {
+  socket.on('message', async (data: Buffer | ArrayBuffer | Buffer[]) => {
     try {
       const message = JSON.parse(data.toString()) as WsMessage;
       await handleMessage(socket, state, message, request);
