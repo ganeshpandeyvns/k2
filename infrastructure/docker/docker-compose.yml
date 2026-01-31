@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: k2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: k2
+      POSTGRES_PASSWORD: k2pass
+      POSTGRES_DB: k2
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U k2 -d k2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: k2-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Trading Service
+  trading:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.trading
+    container_name: k2-trading
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://k2:k2pass@postgres:5432/k2
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-change-in-production
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../services/trading/src:/app/services/trading/src
+      - ../../packages:/app/packages
+    command: pnpm --filter @k2/trading dev
+
+  # API Gateway (optional - can run trading directly)
+  # api-gateway:
+  #   build:
+  #     context: ../..
+  #     dockerfile: infrastructure/docker/Dockerfile.api-gateway
+  #   container_name: k2-api-gateway
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     NODE_ENV: development
+  #     TRADING_SERVICE_URL: http://trading:3001
+  #   depends_on:
+  #     - trading
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: k2-network

@@ -1,0 +1,41 @@
+# K2 Trading Service Dockerfile
+FROM node:20-alpine AS base
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+WORKDIR /app
+
+# Install dependencies
+FROM base AS deps
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml turbo.json ./
+COPY packages/types/package.json ./packages/types/
+COPY services/trading/package.json ./services/trading/
+
+RUN pnpm install --frozen-lockfile
+
+# Build
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
+COPY --from=deps /app/services/trading/node_modules ./services/trading/node_modules
+COPY . .
+
+RUN pnpm --filter @k2/types build
+RUN pnpm --filter @k2/trading build
+
+# Production
+FROM base AS runner
+ENV NODE_ENV=production
+
+COPY --from=builder /app/packages/types/dist ./packages/types/dist
+COPY --from=builder /app/packages/types/package.json ./packages/types/
+COPY --from=builder /app/services/trading/dist ./services/trading/dist
+COPY --from=builder /app/services/trading/package.json ./services/trading/
+COPY --from=builder /app/node_modules ./node_modules
+
+WORKDIR /app/services/trading
+
+EXPOSE 3001
+
+CMD ["node", "dist/index.js"]
