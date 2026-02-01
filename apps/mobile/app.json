@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Meru",
+    "slug": "meru",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#050507"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.meru.trading",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Meru uses Face ID for secure, instant access to your trading account"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#050507"
+      },
+      "package": "app.meru.trading"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Meru to use Face ID for quick sign-in"
+        }
+      ]
+    ]
+  }
+}

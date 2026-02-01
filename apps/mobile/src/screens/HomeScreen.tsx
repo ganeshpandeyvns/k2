@@ -1,297 +1,603 @@
 // ============================================================================
-// Home Screen - Dashboard
+// Meru Home Screen - Premium Dashboard Experience
 // ============================================================================
 
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
+  Animated,
+  Dimensions,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../services/api';
-import { formatCurrency, formatPercent } from '../utils/format';
-import { PriceCard } from '../components/PriceCard';
-import { PositionCard } from '../components/PositionCard';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Haptics from 'expo-haptics';
+import { MeruTheme, DemoUser, formatCurrency, formatPercent } from '../theme/meru';
+import type { RootStackParamList } from '../navigation/RootNavigator';
+import { useFundingStore } from '../store/fundingStore';
+import { usePortfolioStore } from '../store/portfolioStore';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { MiniChart, generateChartData } from '../components/MiniChart';
+import { PortfolioChart } from '../components/PortfolioChart';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Demo prices for assets
+const DEMO_PRICES: Record<string, { price: number; change24h: number }> = {
+  BTC: { price: 67234.89, change24h: 2.34 },
+  ETH: { price: 3456.78, change24h: -1.23 },
+  SOL: { price: 178.45, change24h: 5.67 },
+  AVAX: { price: 42.89, change24h: 3.21 },
+  USDC: { price: 1.00, change24h: 0.01 },
+  USDT: { price: 1.00, change24h: -0.01 },
+  DOGE: { price: 0.1234, change24h: 4.56 },
+  XRP: { price: 0.5678, change24h: -2.34 },
+  MATIC: { price: 0.89, change24h: 1.23 },
+};
+
+const CHANGE_24H = 3247.89;
+const CHANGE_PERCENT_24H = 2.61;
+
+// Quick actions with navigation
+const QUICK_ACTIONS: { id: string; icon: string; label: string; screen: keyof RootStackParamList }[] = [
+  { id: 'deposit', icon: '↓', label: 'Deposit', screen: 'Deposit' },
+  { id: 'withdraw', icon: '↑', label: 'Withdraw', screen: 'Withdraw' },
+  { id: 'swap', icon: '⇄', label: 'Swap', screen: 'Swap' },
+  { id: 'send', icon: '→', label: 'Send', screen: 'Send' },
+];
 
 export function HomeScreen() {
-  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp>();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: portfolio, refetch, isRefetching } = useQuery({
-    queryKey: ['portfolio'],
-    queryFn: () => api.getPortfolio(),
+  // Get cash balance from funding store
+  const { cashBalance } = useFundingStore();
+
+  // Get holdings from portfolio store
+  const { holdings } = usePortfolioStore();
+
+  // Calculate total holdings value using demo prices
+  const holdingsValue = holdings.reduce((total, h) => {
+    const priceInfo = DEMO_PRICES[h.symbol];
+    const price = priceInfo?.price || 0;
+    return total + h.quantity * price;
+  }, 0);
+
+  // Calculate total portfolio value including cash deposits
+  const totalPortfolioValue = holdingsValue + cashBalance;
+
+  // Build assets array from holdings with current prices
+  const ASSETS = holdings.map((h) => {
+    const priceInfo = DEMO_PRICES[h.symbol] || { price: 0, change24h: 0 };
+    return {
+      id: h.symbol,
+      name: h.name,
+      symbol: h.symbol,
+      price: priceInfo.price,
+      change24h: priceInfo.change24h,
+      holdings: h.quantity,
+      value: h.quantity * priceInfo.price,
+      color: h.color,
+    };
   });
 
-  const { data: watchlistQuotes } = useQuery({
-    queryKey: ['watchlist-quotes'],
-    queryFn: () => api.getWatchlistQuotes(),
-    refetchInterval: 5000,
-  });
+  const handleQuickAction = (screen: keyof RootStackParamList) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate(screen as any);
+  };
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [chartData, setChartData] = useState<Record<string, number[]>>({});
+
+  useEffect(() => {
+    // Generate chart data for each asset
+    const data: Record<string, number[]> = {};
+    ASSETS.forEach((asset) => {
+      const trend = asset.change24h > 0 ? 'up' : asset.change24h < 0 ? 'down' : 'neutral';
+      data[asset.id] = generateChartData(asset.price, 0.015, 24, trend);
+    });
+    setChartData(data);
+
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Regenerate chart data
+    const data: Record<string, number[]> = {};
+    ASSETS.forEach((asset) => {
+      const trend = asset.change24h > 0 ? 'up' : asset.change24h < 0 ? 'down' : 'neutral';
+      data[asset.id] = generateChartData(asset.price, 0.015, 24, trend);
+    });
+    setChartData(data);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[
+          MeruTheme.colors.accent.primary + '15',
+          MeruTheme.colors.background.primary,
+          MeruTheme.colors.background.primary,
+        ]}
+        locations={[0, 0.3, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <ScrollView
-        style={styles.scroll}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor="#00D4AA"
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={MeruTheme.colors.accent.primary}
           />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Good morning</Text>
-          <Text style={styles.title}>Dashboard</Text>
-        </View>
-
-        {/* Portfolio Summary */}
-        <View style={styles.portfolioCard}>
-          <Text style={styles.portfolioLabel}>Total Portfolio Value</Text>
-          <Text style={styles.portfolioValue}>
-            {formatCurrency(portfolio?.totalValue || '0')}
-          </Text>
-          <View style={styles.pnlContainer}>
-            <Text
-              style={[
-                styles.pnlValue,
-                parseFloat(portfolio?.totalPnl || '0') >= 0
-                  ? styles.positive
-                  : styles.negative,
-              ]}
-            >
-              {parseFloat(portfolio?.totalPnl || '0') >= 0 ? '+' : ''}
-              {formatCurrency(portfolio?.totalPnl || '0')}
-            </Text>
-            <Text
-              style={[
-                styles.pnlPercent,
-                parseFloat(portfolio?.totalPnlPercent || '0') >= 0
-                  ? styles.positive
-                  : styles.negative,
-              ]}
-            >
-              ({formatPercent(portfolio?.totalPnlPercent || '0')})
-            </Text>
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName}>{DemoUser.name}</Text>
           </View>
-        </View>
+          <View style={styles.headerRight}>
+            <Pressable style={styles.notificationButton}>
+              <View style={styles.notificationDot} />
+              <Text style={styles.notificationIcon}>🔔</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        {/* Portfolio Chart */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: Animated.multiply(slideAnim, 1.2) }],
+          }}
+        >
+          <PortfolioChart
+            currentValue={totalPortfolioValue}
+            change24h={CHANGE_24H}
+            changePercent24h={CHANGE_PERCENT_24H}
+          />
+        </Animated.View>
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.buyButton]}
-            onPress={() => navigation.navigate('Markets' as never)}
-          >
-            <Text style={styles.actionButtonText}>Buy Crypto</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.eventButton]}
-            onPress={() => navigation.navigate('Markets' as never)}
-          >
-            <Text style={styles.actionButtonText}>Trade Events</Text>
-          </TouchableOpacity>
-        </View>
+        <Animated.View
+          style={[
+            styles.quickActionsContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: Animated.multiply(slideAnim, 1.5) }],
+            },
+          ]}
+        >
+          {QUICK_ACTIONS.map((action) => (
+            <Pressable
+              key={action.id}
+              style={({ pressed }) => [
+                styles.quickActionButton,
+                pressed && styles.quickActionButtonPressed,
+              ]}
+              onPress={() => handleQuickAction(action.screen)}
+            >
+              <LinearGradient
+                colors={[
+                  MeruTheme.colors.background.tertiary,
+                  MeruTheme.colors.background.secondary,
+                ]}
+                style={styles.quickActionGradient}
+              >
+                <Text style={styles.quickActionIcon}>{action.icon}</Text>
+              </LinearGradient>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </Animated.View>
 
-        {/* Watchlist */}
-        <View style={styles.section}>
+        {/* Assets Section */}
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: Animated.multiply(slideAnim, 1.8) }],
+            },
+          ]}
+        >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Watchlist</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>See all</Text>
-            </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Your Assets</Text>
+            <Pressable onPress={() => navigation.navigate('Portfolio' as never)}>
+              <Text style={styles.seeAllButton}>See All</Text>
+            </Pressable>
           </View>
+
+          <View style={styles.assetsContainer}>
+            {ASSETS.map((asset, index) => (
+              <Pressable
+                key={asset.id}
+                style={({ pressed }) => [
+                  styles.assetCard,
+                  pressed && styles.assetCardPressed,
+                ]}
+                onPress={() =>
+                  navigation.navigate('InstrumentDetail' as never, {
+                    instrumentId: `${asset.symbol}-USD`,
+                  } as never)
+                }
+              >
+                <View style={styles.assetLeft}>
+                  <View style={[styles.assetIcon, { backgroundColor: asset.color + '20' }]}>
+                    <Text style={[styles.assetIconText, { color: asset.color }]}>
+                      {asset.symbol[0]}
+                    </Text>
+                  </View>
+                  <View style={styles.assetInfo}>
+                    <Text style={styles.assetName}>{asset.name}</Text>
+                    <Text style={styles.assetHoldings}>
+                      {asset.holdings} {asset.symbol}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.assetMiddle}>
+                  <MiniChart
+                    data={chartData[asset.id] || []}
+                    width={60}
+                    height={28}
+                    positive={asset.change24h >= 0}
+                    strokeWidth={1.5}
+                  />
+                </View>
+
+                <View style={styles.assetRight}>
+                  <Text style={styles.assetValue}>{formatCurrency(asset.value)}</Text>
+                  <Text
+                    style={[
+                      styles.assetChange,
+                      {
+                        color:
+                          asset.change24h >= 0
+                            ? MeruTheme.colors.success.primary
+                            : MeruTheme.colors.error.primary,
+                      },
+                    ]}
+                  >
+                    {formatPercent(asset.change24h)}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* Market Movers */}
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: Animated.multiply(slideAnim, 2) }],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Market Movers</Text>
+            <Pressable onPress={() => navigation.navigate('Markets' as never)}>
+              <Text style={styles.seeAllButton}>See All</Text>
+            </Pressable>
+          </View>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.watchlistScroll}
+            contentContainerStyle={styles.moversScrollContent}
           >
-            {watchlistQuotes?.map((quote: any) => (
-              <PriceCard
-                key={quote.instrument}
-                instrument={quote.instrument}
-                price={quote.lastPrice}
-                change={quote.changePercent24h}
-                onPress={() =>
-                  navigation.navigate('InstrumentDetail' as never, {
-                    instrumentId: quote.instrument,
-                  } as never)
-                }
-              />
+            {[
+              { symbol: 'PEPE', name: 'Pepe', price: 0.0000089, change: 24.5, color: '#00a859' },
+              { symbol: 'WIF', name: 'dogwifhat', price: 2.34, change: 18.2, color: '#ff6b35' },
+              { symbol: 'BONK', name: 'Bonk', price: 0.000023, change: -12.3, color: '#ff9500' },
+              { symbol: 'RENDER', name: 'Render', price: 8.45, change: 15.7, color: '#00d4aa' },
+            ].map((token) => (
+              <Pressable
+                key={token.symbol}
+                style={({ pressed }) => [
+                  styles.moverCard,
+                  pressed && styles.moverCardPressed,
+                ]}
+              >
+                <View style={[styles.moverIcon, { backgroundColor: token.color + '20' }]}>
+                  <Text style={[styles.moverIconText, { color: token.color }]}>
+                    {token.symbol[0]}
+                  </Text>
+                </View>
+                <Text style={styles.moverSymbol}>{token.symbol}</Text>
+                <Text style={styles.moverPrice}>
+                  ${token.price < 0.01 ? token.price.toFixed(8) : token.price.toFixed(2)}
+                </Text>
+                <View
+                  style={[
+                    styles.moverChangeBadge,
+                    {
+                      backgroundColor:
+                        token.change >= 0
+                          ? MeruTheme.colors.success.glow
+                          : MeruTheme.colors.error.glow,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.moverChange,
+                      {
+                        color:
+                          token.change >= 0
+                            ? MeruTheme.colors.success.primary
+                            : MeruTheme.colors.error.primary,
+                      },
+                    ]}
+                  >
+                    {formatPercent(token.change)}
+                  </Text>
+                </View>
+              </Pressable>
             ))}
           </ScrollView>
-        </View>
+        </Animated.View>
 
-        {/* Positions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Positions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Portfolio' as never)}>
-              <Text style={styles.seeAll}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          {portfolio?.positions?.slice(0, 3).map((position: any) => (
-            <PositionCard
-              key={position.instrument}
-              position={position}
-              onPress={() =>
-                navigation.navigate('InstrumentDetail' as never, {
-                  instrumentId: position.instrument,
-                } as never)
-              }
-            />
-          ))}
-          {(!portfolio?.positions || portfolio.positions.length === 0) && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No positions yet</Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('Markets' as never)}
-              >
-                <Text style={styles.emptyButtonText}>Start Trading</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        {/* Bottom padding */}
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: MeruTheme.colors.background.primary,
   },
-  scroll: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   header: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  portfolioCard: {
-    margin: 20,
-    marginTop: 0,
-    padding: 24,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-  },
-  portfolioLabel: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-  },
-  portfolioValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  pnlContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+  },
+  headerLeft: {},
+  greeting: {
+    ...MeruTheme.typography.body,
+    color: MeruTheme.colors.text.secondary,
+  },
+  userName: {
+    ...MeruTheme.typography.h1,
+    color: MeruTheme.colors.text.primary,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: MeruTheme.colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationIcon: {
+    fontSize: 20,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: MeruTheme.colors.accent.primary,
+    zIndex: 1,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  quickActionButton: {
     alignItems: 'center',
     gap: 8,
   },
-  pnlValue: {
-    fontSize: 16,
-    fontWeight: '600',
+  quickActionButtonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
-  pnlPercent: {
-    fontSize: 14,
-  },
-  positive: {
-    color: '#00D4AA',
-  },
-  negative: {
-    color: '#FF4D4D',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 24,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+  quickActionGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
   },
-  buyButton: {
-    backgroundColor: '#00D4AA',
+  quickActionIcon: {
+    fontSize: 24,
+    color: MeruTheme.colors.accent.primary,
   },
-  eventButton: {
-    backgroundColor: '#7B61FF',
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  quickActionLabel: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.secondary,
   },
   section: {
-    marginBottom: 24,
+    marginTop: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  seeAll: {
-    fontSize: 14,
-    color: '#00D4AA',
-  },
-  watchlistScroll: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  emptyState: {
-    marginHorizontal: 20,
-    padding: 32,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666666',
     marginBottom: 16,
   },
-  emptyButton: {
-    backgroundColor: '#00D4AA',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  sectionTitle: {
+    ...MeruTheme.typography.h3,
+    color: MeruTheme.colors.text.primary,
   },
-  emptyButtonText: {
-    fontSize: 14,
+  seeAllButton: {
+    ...MeruTheme.typography.bodyMedium,
+    color: MeruTheme.colors.accent.primary,
+  },
+  assetsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  assetCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
+  },
+  assetCardPressed: {
+    backgroundColor: MeruTheme.colors.background.tertiary,
+    transform: [{ scale: 0.98 }],
+  },
+  assetLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  assetIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assetIconText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  assetInfo: {
+    gap: 2,
+  },
+  assetName: {
+    ...MeruTheme.typography.bodyMedium,
+    color: MeruTheme.colors.text.primary,
+  },
+  assetHoldings: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.tertiary,
+  },
+  assetMiddle: {
+    paddingHorizontal: 12,
+  },
+  assetRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  assetValue: {
+    ...MeruTheme.typography.number,
+    color: MeruTheme.colors.text.primary,
+  },
+  assetChange: {
+    ...MeruTheme.typography.caption,
+  },
+  moversScrollContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  moverCard: {
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.lg,
+    padding: 16,
+    width: 130,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
+  },
+  moverCardPressed: {
+    backgroundColor: MeruTheme.colors.background.tertiary,
+  },
+  moverIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moverIconText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  moverSymbol: {
+    ...MeruTheme.typography.bodyMedium,
+    color: MeruTheme.colors.text.primary,
+  },
+  moverPrice: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.secondary,
+  },
+  moverChangeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  moverChange: {
+    ...MeruTheme.typography.captionSmall,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

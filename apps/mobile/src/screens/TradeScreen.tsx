@@ -21,6 +21,28 @@ import * as Haptics from 'expo-haptics';
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePortfolioStore } from '../store/portfolioStore';
+import { useFundingStore } from '../store/fundingStore';
+
+// Demo prices for when API is unavailable
+const DEMO_PRICES: Record<string, { lastPrice: string; change24h: string }> = {
+  'BTC-USD': { lastPrice: '67234.89', change24h: '2.34' },
+  'ETH-USD': { lastPrice: '3456.78', change24h: '-1.23' },
+  'SOL-USD': { lastPrice: '178.45', change24h: '5.67' },
+  'AVAX-USD': { lastPrice: '42.89', change24h: '3.21' },
+  'DOGE-USD': { lastPrice: '0.1234', change24h: '1.45' },
+  'XRP-USD': { lastPrice: '0.5678', change24h: '-0.89' },
+};
+
+// Demo instruments
+const DEMO_INSTRUMENTS: Record<string, { displayName: string; baseAsset: string }> = {
+  'BTC-USD': { displayName: 'Bitcoin', baseAsset: 'BTC' },
+  'ETH-USD': { displayName: 'Ethereum', baseAsset: 'ETH' },
+  'SOL-USD': { displayName: 'Solana', baseAsset: 'SOL' },
+  'AVAX-USD': { displayName: 'Avalanche', baseAsset: 'AVAX' },
+  'DOGE-USD': { displayName: 'Dogecoin', baseAsset: 'DOGE' },
+  'XRP-USD': { displayName: 'XRP', baseAsset: 'XRP' },
+};
 
 type TradeScreenRouteProp = RouteProp<RootStackParamList, 'Trade'>;
 
@@ -39,24 +61,79 @@ export function TradeScreen() {
   const [price, setPrice] = useState('');
   const [eventSide, setEventSide] = useState<EventSide>('yes');
 
+  const { executeBuy, executeSell, getHolding } = usePortfolioStore();
+  const { cashBalance, updateCashBalance } = useFundingStore();
+
   const isEvent = instrumentId.startsWith('KX');
+  const baseAsset = instrumentId.split('-')[0]; // e.g., 'BTC' from 'BTC-USD'
+  const currentHolding = getHolding(baseAsset);
 
   const { data: instrument } = useQuery({
     queryKey: ['instrument', instrumentId],
-    queryFn: () => api.getInstrument(instrumentId),
+    queryFn: async () => {
+      try {
+        return await api.getInstrument(instrumentId);
+      } catch {
+        // Return demo data if API fails
+        return DEMO_INSTRUMENTS[instrumentId] || { displayName: instrumentId, baseAsset: instrumentId.split('-')[0] };
+      }
+    },
   });
 
   const { data: quote } = useQuery({
     queryKey: ['quote', instrumentId],
-    queryFn: () => api.getQuote(instrumentId),
-    refetchInterval: 1000,
+    queryFn: async () => {
+      try {
+        return await api.getQuote(instrumentId);
+      } catch {
+        // Return demo prices if API fails
+        return DEMO_PRICES[instrumentId] || { lastPrice: '100.00', change24h: '0.00' };
+      }
+    },
+    refetchInterval: 5000, // Reduced frequency for demo mode
   });
 
   const submitOrder = useMutation({
-    mutationFn: api.createOrder,
+    mutationFn: async (order: Parameters<typeof api.createOrder>[0]) => {
+      try {
+        return await api.createOrder(order);
+      } catch {
+        // Demo mode: simulate successful order
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return {
+          orderId: `demo_${Date.now()}`,
+          status: 'filled',
+          instrument: order.instrument,
+          side: order.side,
+          quantity: order.quantity,
+          price: order.price || quote?.lastPrice || '0',
+        };
+      }
+    },
     onSuccess: (data) => {
+      const price = parseFloat(data.price || currentPrice);
+      const qty = parseFloat(data.quantity);
+      const totalCost = qty * price;
+
+      // Update portfolio and cash balance based on order side
+      if (!isEvent) {
+        if (data.side === 'buy') {
+          executeBuy(baseAsset, qty, price, instrument?.displayName);
+          // Deduct USD from cash balance
+          updateCashBalance(-totalCost);
+        } else {
+          executeSell(baseAsset, qty, price);
+          // Add USD to cash balance
+          updateCashBalance(totalCost);
+        }
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate('OrderConfirm' as never, { orderId: data.orderId } as never);
+      Alert.alert(
+        'Order Filled',
+        `Your ${side} order for ${quantity} ${baseAsset} at ${formatCurrency(price.toString())} has been filled.\n\nTotal: ${formatCurrency(totalCost.toString())}`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     },
     onError: (error: any) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -75,17 +152,59 @@ export function TradeScreen() {
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Check balance for sell orders
+    if (side === 'sell' && !isEvent) {
+      const holdingQty = currentHolding?.quantity || 0;
+      if (parseFloat(quantity) > holdingQty) {
+        Alert.alert('Insufficient Balance', `You only have ${holdingQty.toFixed(6)} ${baseAsset} available to sell.`);
+        return;
+      }
+    }
 
-    submitOrder.mutate({
-      instrument: instrumentId,
-      side,
-      type: orderType,
-      quantity,
-      price: orderType === 'limit' ? price : undefined,
-      eventSide: isEvent ? eventSide : undefined,
-    });
-  }, [quantity, price, orderType, side, eventSide, instrumentId, isEvent]);
+    // Check cash balance for buy orders
+    if (side === 'buy' && !isEvent) {
+      const totalCost = parseFloat(quantity) * parseFloat(currentPrice);
+      if (totalCost > cashBalance) {
+        Alert.alert(
+          'Insufficient Funds',
+          `This order costs ${formatCurrency(totalCost.toString())} but you only have ${formatCurrency(cashBalance.toString())} available.\n\nDeposit funds to continue.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Deposit', onPress: () => navigation.navigate('Deposit' as never) },
+          ]
+        );
+        return;
+      }
+    }
+
+    const executeOrder = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      submitOrder.mutate({
+        instrument: instrumentId,
+        side,
+        type: orderType,
+        quantity,
+        price: orderType === 'limit' ? price : undefined,
+        eventSide: isEvent ? eventSide : undefined,
+      });
+    };
+
+    // Confirm large transactions (over $1000)
+    const orderTotal = parseFloat(quantity) * parseFloat(currentPrice);
+    if (orderTotal > 1000) {
+      Alert.alert(
+        'Confirm Large Order',
+        `You are about to ${side} ${quantity} ${baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Confirm', style: 'destructive', onPress: executeOrder },
+        ]
+      );
+      return;
+    }
+
+    executeOrder();
+  }, [quantity, price, orderType, side, eventSide, instrumentId, isEvent, currentHolding, baseAsset, cashBalance, currentPrice, navigation, submitOrder]);
 
   const currentPrice = quote?.lastPrice || '0';
   const estimatedTotal = (parseFloat(quantity || '0') * parseFloat(currentPrice)).toFixed(2);
@@ -183,7 +302,14 @@ export function TradeScreen() {
             <TextInput
               style={styles.input}
               value={quantity}
-              onChangeText={setQuantity}
+              onChangeText={(text) => {
+                // Sanitize input - only allow numbers and one decimal point
+                const sanitized = text.replace(/[^0-9.]/g, '');
+                const parts = sanitized.split('.');
+                if (parts.length > 2) return; // Multiple decimals
+                if (parts[1]?.length > 8) return; // Max 8 decimal places
+                setQuantity(sanitized);
+              }}
               placeholder={isEvent ? 'e.g., 10' : 'e.g., 0.5'}
               placeholderTextColor="#666666"
               keyboardType="decimal-pad"
@@ -197,7 +323,14 @@ export function TradeScreen() {
               <TextInput
                 style={styles.input}
                 value={price}
-                onChangeText={setPrice}
+                onChangeText={(text) => {
+                  // Sanitize input - only allow numbers and one decimal point
+                  const sanitized = text.replace(/[^0-9.]/g, '');
+                  const parts = sanitized.split('.');
+                  if (parts.length > 2) return; // Multiple decimals
+                  if (parts[1]?.length > 2) return; // Max 2 decimal places for USD
+                  setPrice(sanitized);
+                }}
                 placeholder={`e.g., ${currentPrice}`}
                 placeholderTextColor="#666666"
                 keyboardType="decimal-pad"

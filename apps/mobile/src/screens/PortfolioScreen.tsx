@@ -13,93 +13,225 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../services/api';
 import { formatCurrency, formatPercent } from '../utils/format';
-import { PositionCard } from '../components/PositionCard';
+import { useFundingStore } from '../store/fundingStore';
+import { usePortfolioStore, TradeTransaction } from '../store/portfolioStore';
 
-type TabType = 'positions' | 'orders' | 'history';
+// Demo prices for assets
+const DEMO_PRICES: Record<string, number> = {
+  BTC: 67234.89,
+  ETH: 3456.78,
+  SOL: 178.45,
+  AVAX: 42.89,
+  USDC: 1.00,
+  USDT: 1.00,
+  DOGE: 0.1234,
+  XRP: 0.5678,
+  MATIC: 0.89,
+};
+
+type TabType = 'positions' | 'activity' | 'history';
 
 export function PortfolioScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('positions');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: portfolio, refetch, isRefetching } = useQuery({
-    queryKey: ['portfolio'],
-    queryFn: () => api.getPortfolio(),
+  // Get cash balance from funding store
+  const { cashBalance, transactions: fundingTransactions } = useFundingStore();
+
+  // Get holdings and transactions from portfolio store
+  const { holdings, transactions: tradeTransactions } = usePortfolioStore();
+
+  // Calculate totals from actual holdings
+  const totalHoldingsValue = holdings.reduce((sum, h) => {
+    const price = DEMO_PRICES[h.symbol] || 0;
+    return sum + h.quantity * price;
+  }, 0);
+
+  const totalCostBasis = holdings.reduce((sum, h) => {
+    return sum + h.quantity * h.avgCost;
+  }, 0);
+
+  const totalPnl = totalHoldingsValue - totalCostBasis;
+  const totalValue = totalHoldingsValue + cashBalance;
+  const totalPnlPercent = totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
+
+  // Build positions from holdings
+  const positions = holdings.map((h) => {
+    const currentPrice = DEMO_PRICES[h.symbol] || 0;
+    const marketValue = h.quantity * currentPrice;
+    const costBasis = h.quantity * h.avgCost;
+    const unrealizedPnl = marketValue - costBasis;
+    const unrealizedPnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0;
+
+    return {
+      instrument: `${h.symbol}-USD`,
+      symbol: h.symbol,
+      name: h.name,
+      quantity: h.quantity.toString(),
+      avgCost: h.avgCost.toString(),
+      currentPrice: currentPrice.toString(),
+      marketValue: marketValue.toString(),
+      unrealizedPnl: unrealizedPnl.toString(),
+      unrealizedPnlPercent: unrealizedPnlPercent.toString(),
+      color: h.color,
+    };
   });
 
-  const { data: openOrders } = useQuery({
-    queryKey: ['orders', 'open'],
-    queryFn: () => api.getOpenOrders(),
-  });
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
 
-  const { data: orderHistory } = useQuery({
-    queryKey: ['orders', 'history'],
-    queryFn: () => api.getOrderHistory(),
-    enabled: activeTab === 'history',
-  });
+  const renderPositionCard = ({ item }: { item: typeof positions[0] }) => (
+    <TouchableOpacity
+      style={styles.positionCard}
+      onPress={() =>
+        navigation.navigate('InstrumentDetail' as never, {
+          instrumentId: item.instrument,
+        } as never)
+      }
+    >
+      <View style={styles.positionLeft}>
+        <View style={[styles.positionIcon, { backgroundColor: item.color + '30' }]}>
+          <Text style={[styles.positionIconText, { color: item.color }]}>
+            {item.symbol[0]}
+          </Text>
+        </View>
+        <View>
+          <Text style={styles.positionSymbol}>{item.symbol}</Text>
+          <Text style={styles.positionQty}>{parseFloat(item.quantity).toFixed(6)}</Text>
+        </View>
+      </View>
+      <View style={styles.positionRight}>
+        <Text style={styles.positionValue}>{formatCurrency(item.marketValue)}</Text>
+        <Text
+          style={[
+            styles.positionPnl,
+            parseFloat(item.unrealizedPnl) >= 0 ? styles.positive : styles.negative,
+          ]}
+        >
+          {parseFloat(item.unrealizedPnl) >= 0 ? '+' : ''}
+          {formatCurrency(item.unrealizedPnl)} ({formatPercent(item.unrealizedPnlPercent)})
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const formatTxType = (type: string) => {
+    const icons: Record<string, string> = {
+      buy: '📈',
+      sell: '📉',
+      swap: '🔄',
+      send: '📤',
+      receive: '📥',
+      deposit: '💰',
+      withdraw: '🏦',
+    };
+    return icons[type] || '•';
+  };
+
+  const renderActivityItem = ({ item }: { item: TradeTransaction }) => (
+    <View style={styles.activityCard}>
+      <View style={styles.activityLeft}>
+        <Text style={styles.activityIcon}>{formatTxType(item.type)}</Text>
+        <View>
+          <Text style={styles.activityType}>
+            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+            {item.type === 'swap' ? ` ${item.asset} → ${item.toAsset}` : ` ${item.asset}`}
+          </Text>
+          <Text style={styles.activityDate}>
+            {new Date(item.timestamp).toLocaleString()}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.activityRight}>
+        {item.type === 'swap' ? (
+          <>
+            <Text style={styles.activityAmountNegative}>-{item.quantity.toFixed(6)} {item.asset}</Text>
+            <Text style={styles.activityAmountPositive}>+{item.toQuantity?.toFixed(6)} {item.toAsset}</Text>
+          </>
+        ) : (
+          <Text
+            style={[
+              styles.activityAmount,
+              item.type === 'sell' || item.type === 'send'
+                ? styles.activityAmountNegative
+                : styles.activityAmountPositive,
+            ]}
+          >
+            {item.type === 'sell' || item.type === 'send' ? '-' : '+'}
+            {item.quantity.toFixed(6)} {item.asset}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  const renderFundingItem = ({ item }: { item: typeof fundingTransactions[0] }) => (
+    <View style={styles.activityCard}>
+      <View style={styles.activityLeft}>
+        <Text style={styles.activityIcon}>{formatTxType(item.type)}</Text>
+        <View>
+          <Text style={styles.activityType}>
+            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+          </Text>
+          <Text style={styles.activityDate}>
+            {new Date(item.timestamp).toLocaleString()}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.activityRight}>
+        <Text
+          style={[
+            styles.activityAmount,
+            item.type === 'withdraw' ? styles.activityAmountNegative : styles.activityAmountPositive,
+          ]}
+        >
+          {item.type === 'withdraw' ? '-' : '+'}
+          {formatCurrency(item.amount.toString())}
+        </Text>
+      </View>
+    </View>
+  );
 
   const renderContent = () => {
     switch (activeTab) {
       case 'positions':
         return (
           <FlatList
-            data={portfolio?.positions || []}
+            data={positions}
             keyExtractor={(item) => item.instrument}
-            renderItem={({ item }) => (
-              <PositionCard
-                position={item}
-                onPress={() =>
-                  navigation.navigate('InstrumentDetail' as never, {
-                    instrumentId: item.instrument,
-                  } as never)
-                }
-              />
-            )}
+            renderItem={renderPositionCard}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl
-                refreshing={isRefetching}
-                onRefresh={refetch}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
                 tintColor="#00D4AA"
               />
             }
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>No positions yet</Text>
+                <Text style={styles.emptySubtext}>Start trading to see your holdings here</Text>
               </View>
             }
           />
         );
 
-      case 'orders':
+      case 'activity':
         return (
           <FlatList
-            data={openOrders || []}
+            data={tradeTransactions}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <Text style={styles.orderInstrument}>{item.instrument}</Text>
-                  <View style={[styles.orderStatus, styles[`status_${item.status}`]]}>
-                    <Text style={styles.orderStatusText}>{item.status}</Text>
-                  </View>
-                </View>
-                <View style={styles.orderDetails}>
-                  <Text style={styles.orderText}>
-                    {item.side.toUpperCase()} {item.quantity} @ {formatCurrency(item.price || '0')}
-                  </Text>
-                  <Text style={styles.orderText}>
-                    Filled: {item.filledQuantity} / {item.quantity}
-                  </Text>
-                </View>
-              </View>
-            )}
+            renderItem={renderActivityItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No open orders</Text>
+                <Text style={styles.emptyText}>No activity yet</Text>
+                <Text style={styles.emptySubtext}>Your trades and swaps will appear here</Text>
               </View>
             }
           />
@@ -108,30 +240,14 @@ export function PortfolioScreen() {
       case 'history':
         return (
           <FlatList
-            data={orderHistory || []}
+            data={fundingTransactions}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <Text style={styles.orderInstrument}>{item.instrument}</Text>
-                  <View style={[styles.orderStatus, styles[`status_${item.status}`]]}>
-                    <Text style={styles.orderStatusText}>{item.status}</Text>
-                  </View>
-                </View>
-                <View style={styles.orderDetails}>
-                  <Text style={styles.orderText}>
-                    {item.side.toUpperCase()} {item.filledQuantity} @ {formatCurrency(item.avgFillPrice || '0')}
-                  </Text>
-                  <Text style={styles.orderDate}>
-                    {new Date(item.updatedAt).toLocaleDateString()}
-                  </Text>
-                </View>
-              </View>
-            )}
+            renderItem={renderFundingItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No order history</Text>
+                <Text style={styles.emptyText}>No funding history</Text>
+                <Text style={styles.emptySubtext}>Deposits and withdrawals will appear here</Text>
               </View>
             }
           />
@@ -152,7 +268,7 @@ export function PortfolioScreen() {
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Total Value</Text>
             <Text style={styles.summaryValue}>
-              {formatCurrency(portfolio?.totalValue || '0')}
+              {formatCurrency(totalValue.toString())}
             </Text>
           </View>
           <View style={styles.summaryItem}>
@@ -160,14 +276,14 @@ export function PortfolioScreen() {
             <Text
               style={[
                 styles.summaryValue,
-                parseFloat(portfolio?.totalPnl || '0') >= 0 ? styles.positive : styles.negative,
+                totalPnl >= 0 ? styles.positive : styles.negative,
               ]}
             >
-              {parseFloat(portfolio?.totalPnl || '0') >= 0 ? '+' : ''}
-              {formatCurrency(portfolio?.totalPnl || '0')}
+              {totalPnl >= 0 ? '+' : ''}
+              {formatCurrency(totalPnl.toString())}
               {' '}
               <Text style={styles.percentText}>
-                ({formatPercent(portfolio?.totalPnlPercent || '0')})
+                ({formatPercent(totalPnlPercent.toString())})
               </Text>
             </Text>
           </View>
@@ -175,14 +291,20 @@ export function PortfolioScreen() {
 
         {/* Balances */}
         <View style={styles.balancesRow}>
-          {portfolio?.balances?.map((balance: any) => (
-            <View key={`${balance.exchange}-${balance.currency}`} style={styles.balanceChip}>
-              <Text style={styles.balanceLabel}>{balance.exchange}</Text>
+          {cashBalance > 0 && (
+            <View style={styles.balanceChip}>
+              <Text style={styles.balanceLabel}>Cash</Text>
               <Text style={styles.balanceValue}>
-                {formatCurrency(balance.available)} {balance.currency}
+                {formatCurrency(cashBalance.toString())}
               </Text>
             </View>
-          ))}
+          )}
+          <View style={styles.balanceChip}>
+            <Text style={styles.balanceLabel}>Holdings</Text>
+            <Text style={styles.balanceValue}>
+              {formatCurrency(totalHoldingsValue.toString())}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -193,15 +315,15 @@ export function PortfolioScreen() {
           onPress={() => setActiveTab('positions')}
         >
           <Text style={[styles.tabText, activeTab === 'positions' && styles.activeTabText]}>
-            Positions
+            Holdings ({holdings.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
-          onPress={() => setActiveTab('orders')}
+          style={[styles.tab, activeTab === 'activity' && styles.activeTab]}
+          onPress={() => setActiveTab('activity')}
         >
-          <Text style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>
-            Open Orders ({openOrders?.length || 0})
+          <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]}>
+            Activity ({tradeTransactions.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -209,7 +331,7 @@ export function PortfolioScreen() {
           onPress={() => setActiveTab('history')}
         >
           <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-            History
+            Funding
           </Text>
         </TouchableOpacity>
       </View>
@@ -297,7 +419,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 20,
     backgroundColor: '#1A1A1A',
   },
@@ -323,60 +445,97 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#666666',
+    marginBottom: 4,
   },
-  orderCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  emptySubtext: {
+    fontSize: 14,
+    color: '#444444',
   },
-  orderHeader: {
+  positionCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
   },
-  orderInstrument: {
+  positionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  positionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  positionIconText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  positionSymbol: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  orderStatus: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+  positionQty: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
   },
-  status_open: {
-    backgroundColor: 'rgba(0, 212, 170, 0.2)',
+  positionRight: {
+    alignItems: 'flex-end',
   },
-  status_partial: {
-    backgroundColor: 'rgba(255, 183, 77, 0.2)',
-  },
-  status_filled: {
-    backgroundColor: 'rgba(0, 212, 170, 0.2)',
-  },
-  status_cancelled: {
-    backgroundColor: 'rgba(255, 77, 77, 0.2)',
-  },
-  status_rejected: {
-    backgroundColor: 'rgba(255, 77, 77, 0.2)',
-  },
-  orderStatusText: {
-    fontSize: 11,
+  positionValue: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-    textTransform: 'uppercase',
   },
-  orderDetails: {
+  positionPnl: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  activityCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
   },
-  orderText: {
-    fontSize: 14,
-    color: '#999999',
+  activityLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  orderDate: {
+  activityIcon: {
+    fontSize: 24,
+  },
+  activityType: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  activityDate: {
     fontSize: 12,
     color: '#666666',
+    marginTop: 2,
+  },
+  activityRight: {
+    alignItems: 'flex-end',
+  },
+  activityAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activityAmountPositive: {
+    color: '#00D4AA',
+  },
+  activityAmountNegative: {
+    color: '#FF4D4D',
   },
 });
