@@ -42,7 +42,7 @@ export const HomeIcon: React.FC<IconProps> = ({
   );
 };
 
-// Markets Icon - Bull (Stock Market Symbol)
+// Markets Icon - Wall Street Charging Bull (aggressive stance, head down)
 export const MarketsIcon: React.FC<IconProps> = ({
   size = 24,
   color = MeruTheme.colors.text.tertiary,
@@ -53,67 +53,91 @@ export const MarketsIcon: React.FC<IconProps> = ({
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {focused ? (
-        // Filled bull head
         <G>
-          {/* Bull head */}
+          {/* Body - muscular charging stance */}
           <Path
-            d="M12 8C8.5 8 6 10.5 6 14C6 17.5 8.5 20 12 20C15.5 20 18 17.5 18 14C18 10.5 15.5 8 12 8Z"
+            d="M6 11C6 11 7 8 10 8C12 8 14 8.5 16 10C18 11.5 19 13 19 15C19 17 18 19 16 19.5C14 20 12 20 10 19.5C8 19 6 18 5 16C4 14 5 12 6 11Z"
             fill={activeColor}
           />
-          {/* Left horn */}
+          {/* Head - lowered for charge */}
           <Path
-            d="M6 10C5 8 3 6 2 5C2.5 5 4 5.5 5 6.5C6 7.5 6.5 9 6.5 10"
+            d="M5 13C4 12.5 3 12 2.5 11C2 10 2.5 9 3.5 9C4.5 9 5.5 10 6 11"
             fill={activeColor}
+          />
+          {/* Left horn - aggressive forward */}
+          <Path
+            d="M2.5 9L1 7L2 6.5"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
           {/* Right horn */}
           <Path
-            d="M18 10C19 8 21 6 22 5C21.5 5 20 5.5 19 6.5C18 7.5 17.5 9 17.5 10"
-            fill={activeColor}
+            d="M3.5 8L3 5.5L4 5"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          {/* Eyes */}
-          <Circle cx="9.5" cy="13" r="1" fill={MeruTheme.colors.background.primary} />
-          <Circle cx="14.5" cy="13" r="1" fill={MeruTheme.colors.background.primary} />
-          {/* Nose ring */}
+          {/* Front legs - planted */}
           <Path
-            d="M10 17C10 18.1 10.9 19 12 19C13.1 19 14 18.1 14 17"
-            stroke={MeruTheme.colors.background.primary}
-            strokeWidth={1.5}
+            d="M8 19L7.5 22M11 19.5L11 22"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          {/* Back legs - pushing */}
+          <Path
+            d="M15 19L15.5 22M17.5 18L19 21"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          {/* Tail - raised */}
+          <Path
+            d="M19 14C20 13 21 12 22 12.5"
+            stroke={activeColor}
+            strokeWidth={2}
             strokeLinecap="round"
           />
         </G>
       ) : (
-        // Outline bull head
         <G>
-          {/* Bull head outline */}
+          {/* Body outline */}
           <Path
-            d="M12 8C8.5 8 6 10.5 6 14C6 17.5 8.5 20 12 20C15.5 20 18 17.5 18 14C18 10.5 15.5 8 12 8Z"
+            d="M6 11C6 11 7 8 10 8C12 8 14 8.5 16 10C18 11.5 19 13 19 15C19 17 18 19 16 19.5C14 20 12 20 10 19.5C8 19 6 18 5 16C4 14 5 12 6 11Z"
             stroke={activeColor}
-            strokeWidth={1.8}
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Left horn */}
+          {/* Head */}
           <Path
-            d="M6 10C5 8 3 6 2 5"
+            d="M5 13C4 12.5 3 12 2.5 11C2 10 2.5 9 3.5 9C4.5 9 5.5 10 6 11"
             stroke={activeColor}
-            strokeWidth={1.8}
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Right horn */}
+          {/* Horns */}
           <Path
-            d="M18 10C19 8 21 6 22 5"
+            d="M2.5 9L1 7L2 6.5M3.5 8L3 5.5L4 5"
             stroke={activeColor}
-            strokeWidth={1.8}
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Eyes */}
-          <Circle cx="9.5" cy="13" r="1" fill={activeColor} />
-          <Circle cx="14.5" cy="13" r="1" fill={activeColor} />
-          {/* Nose ring */}
+          {/* Legs */}
           <Path
-            d="M10 17C10 18.1 10.9 19 12 19C13.1 19 14 18.1 14 17"
+            d="M8 19L7.5 22M11 19.5L11 22M15 19L15.5 22M17.5 18L19 21"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          {/* Tail */}
+          <Path
+            d="M19 14C20 13 21 12 22 12.5"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
