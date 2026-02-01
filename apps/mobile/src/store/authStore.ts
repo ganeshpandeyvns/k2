@@ -23,12 +23,14 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  biometricsEnabled: boolean;
   exchangeConnections: ExchangeConnection[];
 
   // Actions
   login: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
+  setBiometricsEnabled: (enabled: boolean) => void;
   addExchangeConnection: (connection: ExchangeConnection) => void;
   removeExchangeConnection: (exchange: string) => void;
 }
@@ -39,7 +41,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
-      isAuthenticated: true, // Default to true for development
+      isAuthenticated: false, // Start with WelcomeScreen
+      biometricsEnabled: false,
       exchangeConnections: [],
 
       login: (user, accessToken, refreshToken) =>
@@ -56,11 +59,15 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
+          biometricsEnabled: false,
           exchangeConnections: [],
         }),
 
       setTokens: (accessToken, refreshToken) =>
         set({ accessToken, refreshToken }),
+
+      setBiometricsEnabled: (enabled) =>
+        set({ biometricsEnabled: enabled }),
 
       addExchangeConnection: (connection) =>
         set((state) => ({
@@ -78,13 +85,14 @@ export const useAuthStore = create<AuthState>()(
         })),
     }),
     {
-      name: 'k2-auth-storage',
+      name: 'meru-auth-v2',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        biometricsEnabled: state.biometricsEnabled,
         exchangeConnections: state.exchangeConnections,
       }),
     }
