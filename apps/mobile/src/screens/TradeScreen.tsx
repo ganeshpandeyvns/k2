@@ -49,6 +49,7 @@ type TradeScreenRouteProp = RouteProp<RootStackParamList, 'Trade'>;
 type OrderSide = 'buy' | 'sell';
 type OrderType = 'market' | 'limit';
 type EventSide = 'yes' | 'no';
+type InputMode = 'dollars' | 'shares';
 
 export function TradeScreen() {
   const navigation = useNavigation();
@@ -57,7 +58,9 @@ export function TradeScreen() {
 
   const [side, setSide] = useState<OrderSide>(initialSide || 'buy');
   const [orderType, setOrderType] = useState<OrderType>('market');
+  const [inputMode, setInputMode] = useState<InputMode>('dollars'); // Default to dollars like Robinhood
   const [quantity, setQuantity] = useState('');
+  const [dollarAmount, setDollarAmount] = useState('');
   const [price, setPrice] = useState('');
   const [eventSide, setEventSide] = useState<EventSide>('yes');
 
@@ -131,7 +134,7 @@ export function TradeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Order Filled',
-        `Your ${side} order for ${quantity} ${baseAsset} at ${formatCurrency(price.toString())} has been filled.\n\nTotal: ${formatCurrency(totalCost.toString())}`,
+        `Your ${side} order for ${qty.toFixed(6)} ${baseAsset} at ${formatCurrency(price.toString())} has been filled.\n\nTotal: ${formatCurrency(totalCost.toString())}`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     },
@@ -141,10 +144,51 @@ export function TradeScreen() {
     },
   });
 
+  // Derived values - must be defined before handleSubmit that uses them
+  const currentPrice = quote?.lastPrice || '0';
+  const currentPriceNum = parseFloat(currentPrice) || 0;
+
+  // Calculate quantity from dollar amount (for dollar input mode)
+  const calculatedQuantity = inputMode === 'dollars' && currentPriceNum > 0
+    ? (parseFloat(dollarAmount || '0') / currentPriceNum)
+    : parseFloat(quantity || '0');
+
+  // For display and order submission
+  const effectiveQuantity = inputMode === 'dollars'
+    ? calculatedQuantity.toFixed(8).replace(/\.?0+$/, '')
+    : quantity;
+
+  const estimatedTotal = inputMode === 'dollars'
+    ? dollarAmount || '0'
+    : (parseFloat(quantity || '0') * currentPriceNum).toFixed(2);
+
+  // Handle input mode change - clear values
+  const handleInputModeChange = (mode: InputMode) => {
+    setInputMode(mode);
+    setQuantity('');
+    setDollarAmount('');
+    // Force market order for dollar-amount trades
+    if (mode === 'dollars') {
+      setOrderType('market');
+    }
+  };
+
   const handleSubmit = useCallback(() => {
-    if (!quantity || parseFloat(quantity) <= 0) {
-      Alert.alert('Invalid Quantity', 'Please enter a valid quantity');
-      return;
+    // Validate input based on mode
+    if (inputMode === 'dollars') {
+      if (!dollarAmount || parseFloat(dollarAmount) <= 0) {
+        Alert.alert('Invalid Amount', 'Please enter a valid dollar amount');
+        return;
+      }
+      if (parseFloat(dollarAmount) < 1) {
+        Alert.alert('Minimum Order', 'Minimum order is $1.00');
+        return;
+      }
+    } else {
+      if (!quantity || parseFloat(quantity) <= 0) {
+        Alert.alert('Invalid Quantity', 'Please enter a valid quantity');
+        return;
+      }
     }
 
     if (orderType === 'limit' && (!price || parseFloat(price) <= 0)) {
@@ -152,10 +196,15 @@ export function TradeScreen() {
       return;
     }
 
+    const orderQuantity = inputMode === 'dollars' ? calculatedQuantity : parseFloat(quantity);
+    const orderTotal = inputMode === 'dollars'
+      ? parseFloat(dollarAmount)
+      : orderQuantity * currentPriceNum;
+
     // Check balance for sell orders
     if (side === 'sell' && !isEvent) {
       const holdingQty = currentHolding?.quantity || 0;
-      if (parseFloat(quantity) > holdingQty) {
+      if (orderQuantity > holdingQty) {
         Alert.alert('Insufficient Balance', `You only have ${holdingQty.toFixed(6)} ${baseAsset} available to sell.`);
         return;
       }
@@ -163,11 +212,10 @@ export function TradeScreen() {
 
     // Check cash balance for buy orders
     if (side === 'buy' && !isEvent) {
-      const totalCost = parseFloat(quantity) * parseFloat(currentPrice);
-      if (totalCost > cashBalance) {
+      if (orderTotal > cashBalance) {
         Alert.alert(
           'Insufficient Funds',
-          `This order costs ${formatCurrency(totalCost.toString())} but you only have ${formatCurrency(cashBalance.toString())} available.\n\nDeposit funds to continue.`,
+          `This order costs ${formatCurrency(orderTotal.toString())} but you only have ${formatCurrency(cashBalance.toString())} available.\n\nDeposit funds to continue.`,
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Deposit', onPress: () => navigation.navigate('Deposit' as never) },
@@ -183,18 +231,17 @@ export function TradeScreen() {
         instrument: instrumentId,
         side,
         type: orderType,
-        quantity,
+        quantity: orderQuantity.toFixed(8),
         price: orderType === 'limit' ? price : undefined,
         eventSide: isEvent ? eventSide : undefined,
       });
     };
 
     // Confirm large transactions (over $1000)
-    const orderTotal = parseFloat(quantity) * parseFloat(currentPrice);
     if (orderTotal > 1000) {
       Alert.alert(
         'Confirm Large Order',
-        `You are about to ${side} ${quantity} ${baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
+        `You are about to ${side} ${orderQuantity.toFixed(6)} ${baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Confirm', style: 'destructive', onPress: executeOrder },
@@ -203,11 +250,21 @@ export function TradeScreen() {
       return;
     }
 
-    executeOrder();
-  }, [quantity, price, orderType, side, eventSide, instrumentId, isEvent, currentHolding, baseAsset, cashBalance, currentPrice, navigation, submitOrder]);
+    // For market orders with dollar amount, show slippage warning
+    if (inputMode === 'dollars' && orderType === 'market') {
+      Alert.alert(
+        'Market Order',
+        `This is a market order. The final price may differ slightly from ${formatCurrency(currentPrice)} due to market conditions.\n\nEstimated: ${orderQuantity.toFixed(6)} ${baseAsset}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Place Order', onPress: executeOrder },
+        ]
+      );
+      return;
+    }
 
-  const currentPrice = quote?.lastPrice || '0';
-  const estimatedTotal = (parseFloat(quantity || '0') * parseFloat(currentPrice)).toFixed(2);
+    executeOrder();
+  }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -285,36 +342,115 @@ export function TradeScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.orderTypeButton, orderType === 'limit' && styles.orderTypeActive]}
-              onPress={() => setOrderType('limit')}
+              style={[
+                styles.orderTypeButton,
+                orderType === 'limit' && styles.orderTypeActive,
+                inputMode === 'dollars' && styles.orderTypeDisabled,
+              ]}
+              onPress={() => {
+                if (inputMode === 'dollars') {
+                  Alert.alert(
+                    'Limit Orders',
+                    'Limit orders require entering a specific quantity. Switch to the shares/quantity input mode to place limit orders.'
+                  );
+                  return;
+                }
+                setOrderType('limit');
+              }}
+              disabled={inputMode === 'dollars'}
             >
-              <Text style={[styles.orderTypeText, orderType === 'limit' && styles.orderTypeTextActive]}>
+              <Text style={[
+                styles.orderTypeText,
+                orderType === 'limit' && styles.orderTypeTextActive,
+                inputMode === 'dollars' && styles.orderTypeTextDisabled,
+              ]}>
                 Limit
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Quantity Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              {isEvent ? 'Number of Contracts' : 'Quantity'}
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={quantity}
-              onChangeText={(text) => {
-                // Sanitize input - only allow numbers and one decimal point
-                const sanitized = text.replace(/[^0-9.]/g, '');
-                const parts = sanitized.split('.');
-                if (parts.length > 2) return; // Multiple decimals
-                if (parts[1]?.length > 8) return; // Max 8 decimal places
-                setQuantity(sanitized);
-              }}
-              placeholder={isEvent ? 'e.g., 10' : 'e.g., 0.5'}
-              placeholderTextColor="#666666"
-              keyboardType="decimal-pad"
-            />
-          </View>
+          {/* Dollar Mode Disclosure */}
+          {inputMode === 'dollars' && !isEvent && (
+            <View style={styles.disclosureBox}>
+              <Text style={styles.disclosureText}>
+                Dollar orders execute at market price. The quantity of {baseAsset} you receive may vary slightly based on market conditions.
+              </Text>
+            </View>
+          )}
+
+          {/* Input Mode Toggle (Dollars vs Shares) - Only for crypto */}
+          {!isEvent && (
+            <View style={styles.inputModeContainer}>
+              <TouchableOpacity
+                style={[styles.inputModeButton, inputMode === 'dollars' && styles.inputModeActive]}
+                onPress={() => handleInputModeChange('dollars')}
+              >
+                <Text style={[styles.inputModeText, inputMode === 'dollars' && styles.inputModeTextActive]}>
+                  Dollars
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.inputModeButton, inputMode === 'shares' && styles.inputModeActive]}
+                onPress={() => handleInputModeChange('shares')}
+              >
+                <Text style={[styles.inputModeText, inputMode === 'shares' && styles.inputModeTextActive]}>
+                  {baseAsset}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Amount Input - Dollar mode */}
+          {inputMode === 'dollars' && !isEvent && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Amount in USD</Text>
+              <View style={styles.dollarInputContainer}>
+                <Text style={styles.dollarSign}>$</Text>
+                <TextInput
+                  style={styles.dollarInput}
+                  value={dollarAmount}
+                  onChangeText={(text) => {
+                    const sanitized = text.replace(/[^0-9.]/g, '');
+                    const parts = sanitized.split('.');
+                    if (parts.length > 2) return;
+                    if (parts[1]?.length > 2) return; // Max 2 decimal places for USD
+                    setDollarAmount(sanitized);
+                  }}
+                  placeholder="0.00"
+                  placeholderTextColor="#666666"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              {calculatedQuantity > 0 && (
+                <Text style={styles.calculatedQuantity}>
+                  ≈ {calculatedQuantity.toFixed(6)} {baseAsset}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Quantity Input - Shares mode or Events */}
+          {(inputMode === 'shares' || isEvent) && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>
+                {isEvent ? 'Number of Contracts' : `Quantity (${baseAsset})`}
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={quantity}
+                onChangeText={(text) => {
+                  const sanitized = text.replace(/[^0-9.]/g, '');
+                  const parts = sanitized.split('.');
+                  if (parts.length > 2) return;
+                  if (parts[1]?.length > 8) return;
+                  setQuantity(sanitized);
+                }}
+                placeholder={isEvent ? 'e.g., 10' : 'e.g., 0.5'}
+                placeholderTextColor="#666666"
+                keyboardType="decimal-pad"
+              />
+            </View>
+          )}
 
           {/* Price Input (Limit Orders) */}
           {orderType === 'limit' && (
@@ -349,8 +485,14 @@ export function TradeScreen() {
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Quantity</Text>
-              <Text style={styles.summaryValue}>{quantity || '0'}</Text>
+              <Text style={styles.summaryLabel}>
+                {inputMode === 'dollars' ? `Est. ${baseAsset}` : 'Quantity'}
+              </Text>
+              <Text style={styles.summaryValue}>
+                {inputMode === 'dollars'
+                  ? `${calculatedQuantity.toFixed(6)} ${baseAsset}`
+                  : `${quantity || '0'} ${isEvent ? 'contracts' : baseAsset}`}
+              </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Est. Total</Text>
@@ -362,6 +504,12 @@ export function TradeScreen() {
                 <Text style={styles.summaryValue}>
                   {formatCurrency(parseFloat(quantity || '0').toString())}
                 </Text>
+              </View>
+            )}
+            {inputMode === 'dollars' && !isEvent && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Order Type</Text>
+                <Text style={styles.summaryValueHighlight}>Market Order</Text>
               </View>
             )}
           </View>
@@ -485,6 +633,68 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: '#FFFFFF',
   },
+  inputModeContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 16,
+  },
+  inputModeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  inputModeActive: {
+    backgroundColor: '#333333',
+  },
+  inputModeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  inputModeTextActive: {
+    color: '#FFFFFF',
+  },
+  dollarInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  dollarSign: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#00D4AA',
+    marginRight: 4,
+  },
+  dollarInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    paddingVertical: 16,
+  },
+  calculatedQuantity: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  disclosureBox: {
+    backgroundColor: 'rgba(0, 212, 170, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  disclosureText: {
+    fontSize: 12,
+    color: '#00D4AA',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   orderTypeContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -502,12 +712,19 @@ const styles = StyleSheet.create({
     borderColor: '#00D4AA',
     backgroundColor: 'rgba(0, 212, 170, 0.1)',
   },
+  orderTypeDisabled: {
+    opacity: 0.4,
+    borderColor: '#222222',
+  },
   orderTypeText: {
     fontSize: 14,
     color: '#666666',
   },
   orderTypeTextActive: {
     color: '#00D4AA',
+  },
+  orderTypeTextDisabled: {
+    color: '#444444',
   },
   inputGroup: {
     marginBottom: 16,
@@ -548,6 +765,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  summaryValueHighlight: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00D4AA',
   },
   warning: {
     backgroundColor: 'rgba(255, 77, 77, 0.1)',

@@ -13,10 +13,14 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
+import { useFundingStore } from '../store/fundingStore';
 
 export function SettingsScreen() {
+  const navigation = useNavigation();
   const { user, exchangeConnections, logout } = useAuthStore();
+  const { paymentMethods } = useFundingStore();
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -108,6 +112,38 @@ export function SettingsScreen() {
                 thumbColor="#FFFFFF"
               />
             </View>
+          </View>
+        </View>
+
+        {/* Payment */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('PaymentMethods' as never)}
+            >
+              <View>
+                <Text style={styles.rowLabel}>Payment Methods</Text>
+                <Text style={styles.rowSubtext}>
+                  {paymentMethods.length > 0
+                    ? `${paymentMethods.length} linked account${paymentMethods.length > 1 ? 's' : ''}`
+                    : 'No accounts linked'}
+                </Text>
+              </View>
+              <Text style={styles.rowArrow}>→</Text>
+            </TouchableOpacity>
+            <View style={styles.separator} />
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('KYC' as never)}
+            >
+              <View>
+                <Text style={styles.rowLabel}>Identity Verification</Text>
+                <Text style={styles.rowSubtext}>Required for deposits</Text>
+              </View>
+              <Text style={styles.rowArrow}>→</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

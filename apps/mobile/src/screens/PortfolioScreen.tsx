@@ -306,6 +306,24 @@ export function PortfolioScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Quick Funding Actions */}
+        <View style={styles.fundingActions}>
+          <TouchableOpacity
+            style={styles.fundingButton}
+            onPress={() => navigation.navigate('Deposit' as never)}
+          >
+            <Text style={styles.fundingButtonIcon}>↓</Text>
+            <Text style={styles.fundingButtonText}>Deposit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.fundingButton}
+            onPress={() => navigation.navigate('Withdraw' as never)}
+          >
+            <Text style={styles.fundingButtonIcon}>↑</Text>
+            <Text style={styles.fundingButtonText}>Withdraw</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}
@@ -410,6 +428,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  fundingActions: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 12,
+  },
+  fundingButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D0D0D',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  fundingButtonIcon: {
+    fontSize: 16,
+    color: '#00D4AA',
+  },
+  fundingButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   tabs: {
     flexDirection: 'row',
