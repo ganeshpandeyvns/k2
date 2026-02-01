@@ -49,14 +49,40 @@
       "patternCreated": "P019",
       "fixed": true,
       "fixCommit": "previous"
+    },
+    {
+      "id": "M005",
+      "date": "2026-02-01",
+      "file": "src/screens/wallet/SendScreen.tsx",
+      "line": 80,
+      "description": "Missing large transaction confirmation for sends >$1000",
+      "severity": "HIGH",
+      "reportedBy": "QA-Loop",
+      "patternCreated": null,
+      "patternUsed": "P010",
+      "fixed": true,
+      "fixCommit": "pending"
+    },
+    {
+      "id": "M006",
+      "date": "2026-02-01",
+      "file": "src/screens/funding/WithdrawScreen.tsx",
+      "line": 39,
+      "description": "Missing large transaction confirmation for withdrawals >$1000",
+      "severity": "HIGH",
+      "reportedBy": "QA-Loop",
+      "patternCreated": null,
+      "patternUsed": "P010",
+      "fixed": true,
+      "fixCommit": "pending"
     }
   ],
   "stats": {
-    "totalReported": 4,
-    "totalFixed": 4,
+    "totalReported": 6,
+    "totalFixed": 6,
     "bySeverity": {
       "CRITICAL": 2,
-      "HIGH": 2,
+      "HIGH": 4,
       "MEDIUM": 0,
       "LOW": 0
     }

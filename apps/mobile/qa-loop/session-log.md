@@ -53,6 +53,48 @@ These bugs were fixed before QA loop was set up:
 
 ---
 
+## Session 2 - 2026-02-01
+
+**Score Change**: -80 (2 HIGH bugs × -50 = -100) + (+10 P010 caught × 2) = -80
+**Running Score**: 420
+
+### Bugs Found
+| Severity | File | Line | Description | Pattern |
+|----------|------|------|-------------|---------|
+| HIGH | src/screens/wallet/SendScreen.tsx | 80 | Missing large transaction confirmation for sends >$1000 | P010 |
+| HIGH | src/screens/funding/WithdrawScreen.tsx | 39 | Missing large transaction confirmation for withdrawals >$1000 | P010 |
+
+### Patterns Applied
+- P003 (Balance validation): Applied to all transaction screens - all passed
+- P009 (Double-tap protection): Applied to all screens - all passed
+- P010 (Large transaction confirmation): Applied to all screens - **caught 2 bugs!**
+- P012 (Address validation): Applied to SendScreen - passed
+- P020 (KYC enforcement): Applied to DepositScreen - passed
+
+### Bugs Fixed
+1. **SendScreen.tsx:80** - Added large transaction confirmation for sends >$1000
+   - Root cause: Missing P010 pattern implementation
+   - Fix: Added Alert.alert confirmation before showing confirmation screen
+   - Pattern: P010
+
+2. **WithdrawScreen.tsx:39** - Added large transaction confirmation for withdrawals >$1000
+   - Root cause: Missing P010 pattern implementation
+   - Fix: Split handleWithdraw into executeWithdraw + confirmation check
+   - Pattern: P010
+
+### Score Calculation
+- Bugs: HIGH(2) × -50 = -100
+- Pattern catches: P010 × 2 = +20
+- New patterns: 0 × +25 = 0
+- **Total**: -80
+
+### Notes
+- P010 weight increased from 1.3 to 1.5 (caught 2 bugs this session)
+- All other patterns applied successfully with no new bugs found
+- TradeScreen and SwapScreen already had proper large transaction confirmation
+
+---
+
 ## Template for Future Sessions
 
 ```markdown

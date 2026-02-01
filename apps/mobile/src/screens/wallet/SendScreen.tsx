@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -80,6 +81,20 @@ export const SendScreen: React.FC = () => {
   const handleReview = () => {
     if (!canSend) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Confirm large transactions (over $1000)
+    if (usdValue > 1000) {
+      Alert.alert(
+        'Confirm Large Send',
+        `You are about to send ${numericAmount.toFixed(6)} ${selectedAsset} (~${formatCurrency(usdValue)}).\n\nThis is a large transaction. Are you sure you want to continue?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', onPress: () => setShowConfirmation(true) },
+        ]
+      );
+      return;
+    }
+
     setShowConfirmation(true);
   };
 

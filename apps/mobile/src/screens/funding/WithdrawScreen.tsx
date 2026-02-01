@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,14 +37,12 @@ export const WithdrawScreen: React.FC = () => {
   const numericAmount = parseFloat(amount) || 0;
   const isValidAmount = numericAmount >= 10 && numericAmount <= cashBalance;
 
-  const handleWithdraw = useCallback(async () => {
-    if (!defaultMethod || !isValidAmount) return;
-
+  const executeWithdraw = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsProcessing(true);
 
     try {
-      const tx = await simulateWithdraw(numericAmount, defaultMethod.id);
+      const tx = await simulateWithdraw(numericAmount, defaultMethod!.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate('TransactionSuccess' as any, {
         type: 'withdraw',
@@ -55,7 +54,26 @@ export const WithdrawScreen: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [defaultMethod, numericAmount, isValidAmount, navigation, simulateWithdraw]);
+  }, [defaultMethod, numericAmount, navigation, simulateWithdraw]);
+
+  const handleWithdraw = useCallback(() => {
+    if (!defaultMethod || !isValidAmount) return;
+
+    // Confirm large transactions (over $1000)
+    if (numericAmount > 1000) {
+      Alert.alert(
+        'Confirm Large Withdrawal',
+        `You are about to withdraw ${formatCurrency(numericAmount)}.\n\nThis is a large transaction. Are you sure you want to proceed?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Confirm', style: 'destructive', onPress: executeWithdraw },
+        ]
+      );
+      return;
+    }
+
+    executeWithdraw();
+  }, [defaultMethod, numericAmount, isValidAmount, executeWithdraw]);
 
   const handleMax = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
