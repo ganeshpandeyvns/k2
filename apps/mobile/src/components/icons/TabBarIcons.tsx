@@ -42,7 +42,7 @@ export const HomeIcon: React.FC<IconProps> = ({
   );
 };
 
-// Markets Icon - Wall Street Charging Bull (aggressive stance, head down)
+// Markets Icon - Wall Street Charging Bull (classic silhouette, facing right)
 export const MarketsIcon: React.FC<IconProps> = ({
   size = 24,
   color = MeruTheme.colors.text.tertiary,
@@ -51,52 +51,43 @@ export const MarketsIcon: React.FC<IconProps> = ({
   const activeColor = focused ? MeruTheme.colors.accent.primary : color;
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       {focused ? (
         <G>
-          {/* Body - muscular charging stance */}
+          {/* Main body */}
           <Path
-            d="M6 11C6 11 7 8 10 8C12 8 14 8.5 16 10C18 11.5 19 13 19 15C19 17 18 19 16 19.5C14 20 12 20 10 19.5C8 19 6 18 5 16C4 14 5 12 6 11Z"
+            d="M4 10 C3 8 2 6 3 5 L5 6 C6 7 6 9 7 10 C8 9 10 7 14 6 C18 5 22 6 24 8 C25 9 26 11 25 13 C24 15 22 16 20 17 L19 20 L18 24 H16 L17 20 L15 18 L14 20 L13 24 H11 L12 20 L10 17 C8 16 6 15 5 13 C4 12 4 11 5 10 Z"
             fill={activeColor}
           />
-          {/* Head - lowered for charge */}
+          {/* Tail */}
           <Path
-            d="M5 13C4 12.5 3 12 2.5 11C2 10 2.5 9 3.5 9C4.5 9 5.5 10 6 11"
+            d="M4 10 C3 9 2 7 1 8 C0 9 1 11 2 10"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          {/* Head */}
+          <Path
+            d="M25 13 C26 12 28 11 29 11 C30 11 30 12 29 13"
             fill={activeColor}
           />
-          {/* Left horn - aggressive forward */}
+          {/* Top horn */}
           <Path
-            d="M2.5 9L1 7L2 6.5"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Right horn */}
-          <Path
-            d="M3.5 8L3 5.5L4 5"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Front legs - planted */}
-          <Path
-            d="M8 19L7.5 22M11 19.5L11 22"
+            d="M29 11 L31 9"
             stroke={activeColor}
             strokeWidth={2}
             strokeLinecap="round"
           />
-          {/* Back legs - pushing */}
+          {/* Bottom horn */}
           <Path
-            d="M15 19L15.5 22M17.5 18L19 21"
+            d="M29 13 L31 14"
             stroke={activeColor}
             strokeWidth={2}
             strokeLinecap="round"
           />
-          {/* Tail - raised */}
+          {/* Front legs */}
           <Path
-            d="M19 14C20 13 21 12 22 12.5"
+            d="M22 17 L23 21 L22 24 M24 15 L26 20 L25 24"
             stroke={activeColor}
             strokeWidth={2}
             strokeLinecap="round"
@@ -106,38 +97,30 @@ export const MarketsIcon: React.FC<IconProps> = ({
         <G>
           {/* Body outline */}
           <Path
-            d="M6 11C6 11 7 8 10 8C12 8 14 8.5 16 10C18 11.5 19 13 19 15C19 17 18 19 16 19.5C14 20 12 20 10 19.5C8 19 6 18 5 16C4 14 5 12 6 11Z"
+            d="M4 10 C3 8 2 6 3 5 C6 7 6 9 7 10 C8 9 10 7 14 6 C18 5 22 6 24 8 C25 9 26 11 25 13 C26 12 28 11 29 11 C30 11 30 12 29 13 C28 14 26 15 25 15 C24 16 22 17 20 17"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Head */}
+          {/* Underside and legs */}
           <Path
-            d="M5 13C4 12.5 3 12 2.5 11C2 10 2.5 9 3.5 9C4.5 9 5.5 10 6 11"
+            d="M7 10 C6 11 5 12 5 13 C5 15 7 16 10 17 L12 20 L11 24 M14 18 L13 24 M19 20 L18 24 M22 17 L23 24 M24 15 L26 24"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-          />
-          {/* Horns */}
-          <Path
-            d="M2.5 9L1 7L2 6.5M3.5 8L3 5.5L4 5"
-            stroke={activeColor}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Legs */}
-          <Path
-            d="M8 19L7.5 22M11 19.5L11 22M15 19L15.5 22M17.5 18L19 21"
-            stroke={activeColor}
-            strokeWidth={1.5}
-            strokeLinecap="round"
           />
           {/* Tail */}
           <Path
-            d="M19 14C20 13 21 12 22 12.5"
+            d="M4 10 C2 8 1 9 2 11"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          {/* Horns */}
+          <Path
+            d="M29 11 L31 9 M29 13 L31 14"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
