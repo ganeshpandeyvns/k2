@@ -259,3 +259,200 @@ export const BellIcon: React.FC<IconProps> = ({
     />
   </Svg>
 );
+
+// ============================================================================
+// Markets Screen Tab Icons - Premium SVG for Crypto/Events/Trending
+// ============================================================================
+
+// Crypto Icon - Bitcoin-inspired stylized 'B' with circle
+export const CryptoIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          <Circle cx="12" cy="12" r="10" fill={activeColor} />
+          <Path
+            d="M9.5 7V17M9.5 7H13C14.6569 7 16 8.11929 16 9.5C16 10.8807 14.6569 12 13 12M9.5 7H8M9.5 12H14C15.6569 12 17 13.1193 17 14.5C17 15.8807 15.6569 17 14 17H9.5M9.5 12V17M9.5 17H8M11 5V7M11 17V19M13 5V7M13 17V19"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      ) : (
+        <G>
+          <Circle cx="12" cy="12" r="10" stroke={activeColor} strokeWidth={1.5} />
+          <Path
+            d="M9.5 7V17M9.5 7H13C14.6569 7 16 8.11929 16 9.5C16 10.8807 14.6569 12 13 12M9.5 7H8M9.5 12H14C15.6569 12 17 13.1193 17 14.5C17 15.8807 15.6569 17 14 17H9.5M9.5 12V17M9.5 17H8M11 5V7M11 17V19M13 5V7M13 17V19"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
+// Events Icon - Calendar with checkmark (prediction markets)
+export const EventsIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          <Rect x="3" y="4" width="18" height="18" rx="3" fill={activeColor} />
+          <Path
+            d="M8 2V6M16 2V6M3 10H21"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          <Path
+            d="M9 15L11 17L15 13"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      ) : (
+        <G>
+          <Rect
+            x="3" y="4" width="18" height="18" rx="3"
+            stroke={activeColor}
+            strokeWidth={1.5}
+          />
+          <Path
+            d="M8 2V6M16 2V6M3 10H21"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          <Path
+            d="M9 15L11 17L15 13"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
+// Trending Icon - Rising flame / rocket
+export const TrendingIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <Path
+          d="M12 2C12 2 4 8 4 14C4 18.4183 7.58172 22 12 22C16.4183 22 20 18.4183 20 14C20 8 12 2 12 2ZM12 18C10.3431 18 9 16.6569 9 15C9 13.3431 10.3431 12 12 12C13.6569 12 15 13.3431 15 15C15 16.6569 13.6569 18 12 18Z"
+          fill={activeColor}
+        />
+      ) : (
+        <G>
+          <Path
+            d="M12 2C12 2 4 8 4 14C4 18.4183 7.58172 22 12 22C16.4183 22 20 18.4183 20 14C20 8 12 2 12 2Z"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <Circle
+            cx="12" cy="15" r="3"
+            stroke={activeColor}
+            strokeWidth={1.5}
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
+// Search Icon - Clean magnifying glass
+export const SearchIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="11" cy="11" r="7" stroke={color} strokeWidth={2} />
+    <Path
+      d="M21 21L16.5 16.5"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+// Filter/Settings Icon - Sliders
+export const FilterIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M4 21V14M4 10V3M12 21V12M12 8V3M20 21V16M20 12V3M1 14H7M9 8H15M17 16H23"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Theme Icons for Settings
+export const PaletteIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = MeruTheme.colors.text.primary,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C12.83 22 13.5 21.33 13.5 20.5C13.5 20.12 13.36 19.77 13.13 19.51C12.9 19.25 12.77 18.92 12.77 18.55C12.77 17.75 13.43 17.09 14.23 17.09H16C18.76 17.09 21 14.85 21 12.09C21 6.53 17.04 2 12 2Z"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="6.5" cy="11.5" r="1.5" fill={color} />
+    <Circle cx="9.5" cy="7.5" r="1.5" fill={color} />
+    <Circle cx="14.5" cy="7.5" r="1.5" fill={color} />
+    <Circle cx="17.5" cy="11.5" r="1.5" fill={color} />
+  </Svg>
+);
+
+// Check Icon for theme selection
+export const CheckIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = MeruTheme.colors.accent.primary,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20 6L9 17L4 12"
+      stroke={color}
+      strokeWidth={3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);

@@ -16,8 +16,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { MeruTheme, formatCurrency, formatPercent } from '../theme/meru';
 import { MiniChart, generateChartData } from '../components/MiniChart';
+import {
+  CryptoIcon,
+  EventsIcon,
+  TrendingIcon,
+  SearchIcon,
+  FilterIcon,
+} from '../components/icons/TabBarIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -197,10 +205,10 @@ export function MarketsScreen() {
     );
   };
 
-  const tabs: { id: TabType; label: string; icon: string }[] = [
-    { id: 'crypto', label: 'Crypto', icon: '₿' },
-    { id: 'events', label: 'Events', icon: '📊' },
-    { id: 'trending', label: 'Trending', icon: '🔥' },
+  const tabs: { id: TabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
+    { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
+    { id: 'events', label: 'Events', IconComponent: EventsIcon },
+    { id: 'trending', label: 'Trending', IconComponent: TrendingIcon },
   ];
 
   return (
@@ -224,7 +232,7 @@ export function MarketsScreen() {
         <Text style={styles.title}>Markets</Text>
         <View style={styles.headerRight}>
           <Pressable style={styles.filterButton}>
-            <Text style={styles.filterIcon}>⚙️</Text>
+            <FilterIcon size={20} color={MeruTheme.colors.text.secondary} />
           </Pressable>
         </View>
       </Animated.View>
@@ -237,7 +245,9 @@ export function MarketsScreen() {
         ]}
       >
         <View style={styles.searchInputWrapper}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <View style={styles.searchIconWrapper}>
+            <SearchIcon size={18} color={MeruTheme.colors.text.tertiary} />
+          </View>
           <TextInput
             style={styles.searchInput}
             placeholder="Search markets..."
@@ -261,27 +271,37 @@ export function MarketsScreen() {
         ]}
       >
         <View style={styles.tabsWrapper}>
-          {tabs.map((tab) => (
-            <Pressable
-              key={tab.id}
-              style={[
-                styles.tab,
-                activeTab === tab.id && styles.tabActive,
-              ]}
-              onPress={() => setActiveTab(tab.id)}
-            >
-              <Text style={styles.tabIcon}>{tab.icon}</Text>
-              <Text
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
                 style={[
-                  styles.tabLabel,
-                  activeTab === tab.id && styles.tabLabelActive,
+                  styles.tab,
+                  isActive && styles.tabActive,
                 ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setActiveTab(tab.id);
+                }}
               >
-                {tab.label}
-              </Text>
-              {activeTab === tab.id && <View style={styles.tabIndicator} />}
-            </Pressable>
-          ))}
+                <tab.IconComponent
+                  size={16}
+                  focused={isActive}
+                  color={isActive ? MeruTheme.colors.accent.primary : MeruTheme.colors.text.tertiary}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    isActive && styles.tabLabelActive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+                {isActive && <View style={styles.tabIndicator} />}
+              </Pressable>
+            );
+          })}
         </View>
       </Animated.View>
 
@@ -314,7 +334,9 @@ export function MarketsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔍</Text>
+            <View style={styles.emptyIconWrapper}>
+              <SearchIcon size={48} color={MeruTheme.colors.text.tertiary} />
+            </View>
             <Text style={styles.emptyTitle}>No markets found</Text>
             <Text style={styles.emptySubtitle}>Try a different search term</Text>
           </View>
@@ -353,9 +375,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterIcon: {
-    fontSize: 18,
-  },
   searchContainer: {
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -369,8 +388,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: MeruTheme.colors.border.subtle,
   },
-  searchIcon: {
-    fontSize: 16,
+  searchIconWrapper: {
     marginRight: 10,
   },
   searchInput: {
@@ -405,9 +423,6 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     backgroundColor: MeruTheme.colors.background.elevated,
-  },
-  tabIcon: {
-    fontSize: 14,
   },
   tabLabel: {
     ...MeruTheme.typography.caption,
@@ -526,8 +541,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIconWrapper: {
     marginBottom: 16,
   },
   emptyTitle: {

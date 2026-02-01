@@ -42,10 +42,10 @@ const getSmoothNoise = (x: number, seed: number): number => {
   return smoothInterpolate(v1, v2, fracX);
 };
 
-// Generate realistic portfolio data with smooth organic movement
+// Generate realistic portfolio data with authentic market dynamics
 const generatePortfolioData = (baseValue: number, range: TimeRange): number[] => {
   const pointsMap: Record<TimeRange, number> = {
-    '1D': 96,      // More points for smoother curves
+    '1D': 96,
     '1W': 168,
     '1M': 120,
     '3M': 180,
@@ -54,63 +54,132 @@ const generatePortfolioData = (baseValue: number, range: TimeRange): number[] =>
   };
 
   const volatilityMap: Record<TimeRange, number> = {
-    '1D': 0.003,
-    '1W': 0.006,
-    '1M': 0.01,
-    '3M': 0.012,
-    '1Y': 0.018,
-    'ALL': 0.022,
+    '1D': 0.004,
+    '1W': 0.008,
+    '1M': 0.012,
+    '3M': 0.016,
+    '1Y': 0.022,
+    'ALL': 0.028,
   };
 
   const points = pointsMap[range];
-  const volatility = volatilityMap[range];
-
-  // Generate a random seed for this chart instance
+  const baseVolatility = volatilityMap[range];
   const seed = Math.random() * 1000;
 
+  // Determine market personality for this chart
+  const isVolatile = Math.random() > 0.6;
+  const hasMajorCorrection = Math.random() > 0.65;
+  const correctionPoint = 0.3 + Math.random() * 0.4; // Where correction starts
+  const correctionDepth = 0.08 + Math.random() * 0.12; // How deep
+
   // Start from a lower value and trend up to current
-  const startValue = baseValue * (0.75 + Math.random() * 0.15);
+  const growthFactor = 0.7 + Math.random() * 0.2;
+  const startValue = baseValue * growthFactor;
   const data: number[] = [];
 
-  // Calculate the overall trend needed
-  const totalGrowth = baseValue - startValue;
+  // Pre-generate some "market phases" - areas of different behavior
+  const phaseCount = 4 + Math.floor(Math.random() * 3);
+  const phases: { start: number; type: 'bull' | 'bear' | 'consolidation' }[] = [];
+  let phasePos = 0;
+  for (let p = 0; p < phaseCount; p++) {
+    const phaseLength = (1 - phasePos) / (phaseCount - p);
+    const randomType = Math.random();
+    phases.push({
+      start: phasePos,
+      type: randomType > 0.65 ? 'bull' : randomType > 0.35 ? 'consolidation' : 'bear',
+    });
+    phasePos += phaseLength * (0.7 + Math.random() * 0.6);
+  }
+
+  const getPhase = (progress: number) => {
+    for (let i = phases.length - 1; i >= 0; i--) {
+      if (progress >= phases[i].start) return phases[i].type;
+    }
+    return 'consolidation';
+  };
+
+  // Generate the data
+  let prevValue = startValue;
+  let prevDelta = 0;
 
   for (let i = 0; i < points; i++) {
     const progress = i / (points - 1);
+    const phase = getPhase(progress);
 
-    // Base trend (smooth growth towards target)
-    const trendValue = startValue + totalGrowth * progress;
+    // Base trend calculation with easing
+    const easeProgress = 1 - Math.pow(1 - progress, 2); // Ease out
+    const targetValue = startValue + (baseValue - startValue) * easeProgress;
 
-    // Layer multiple noise frequencies for organic movement
-    const noise1 = getSmoothNoise(i * 0.1, seed) - 0.5;       // Slow waves
-    const noise2 = getSmoothNoise(i * 0.3, seed + 100) - 0.5; // Medium waves
-    const noise3 = getSmoothNoise(i * 0.7, seed + 200) - 0.5; // Fast ripples
+    // Variable volatility based on phase
+    let volatility = baseVolatility;
+    if (phase === 'bull') volatility *= 0.8;
+    else if (phase === 'bear') volatility *= 1.4;
+    if (isVolatile) volatility *= 1.3;
 
-    // Combine noises with different weights
-    const combinedNoise = noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1;
+    // Multi-frequency noise for organic movement
+    const noise1 = getSmoothNoise(i * 0.08, seed) - 0.5;      // Very slow trend waves
+    const noise2 = getSmoothNoise(i * 0.2, seed + 50) - 0.5;  // Medium waves
+    const noise3 = getSmoothNoise(i * 0.5, seed + 100) - 0.5; // Faster ripples
+    const noise4 = getSmoothNoise(i * 1.2, seed + 150) - 0.5; // Quick noise
 
-    // Apply volatility scaled by value
-    const noiseAmount = combinedNoise * volatility * trendValue;
+    // Combine noises with weights based on phase
+    let combinedNoise: number;
+    if (phase === 'consolidation') {
+      // Tighter, less directional movement
+      combinedNoise = noise2 * 0.3 + noise3 * 0.4 + noise4 * 0.3;
+    } else {
+      // More directional movement
+      combinedNoise = noise1 * 0.4 + noise2 * 0.35 + noise3 * 0.2 + noise4 * 0.05;
+    }
 
-    // Add momentum (prices tend to continue their direction briefly)
-    const momentum = i > 0 ? (data[i - 1] - (data[i - 2] || data[0])) * 0.3 : 0;
+    // Add major correction if applicable
+    let correctionAdjust = 0;
+    if (hasMajorCorrection && progress >= correctionPoint && progress < correctionPoint + 0.15) {
+      const correctionProgress = (progress - correctionPoint) / 0.15;
+      const correctionWave = Math.sin(correctionProgress * Math.PI);
+      correctionAdjust = -correctionWave * correctionDepth * targetValue;
+    }
 
-    const value = trendValue + noiseAmount + momentum;
-    data.push(Math.max(value, startValue * 0.6));
+    // Phase-specific bias
+    let phaseBias = 0;
+    if (phase === 'bull') phaseBias = volatility * 0.3;
+    else if (phase === 'bear') phaseBias = -volatility * 0.4;
+
+    // Calculate the movement
+    const noiseAmount = combinedNoise * volatility * targetValue;
+
+    // Momentum with decay (price continues direction but fades)
+    const momentumDecay = 0.85;
+    const momentum = prevDelta * momentumDecay * 0.4;
+
+    // Mean reversion pull towards target
+    const deviation = prevValue - targetValue;
+    const meanReversionStrength = 0.02;
+    const meanReversion = -deviation * meanReversionStrength;
+
+    // Combine all factors
+    const rawValue = prevValue + noiseAmount + momentum + meanReversion + phaseBias + correctionAdjust;
+
+    // Ensure reasonable bounds
+    const minValue = startValue * 0.5;
+    const maxValue = baseValue * 1.3;
+    const value = Math.max(minValue, Math.min(maxValue, rawValue));
+
+    prevDelta = value - prevValue;
+    prevValue = value;
+    data.push(value);
   }
 
-  // Ensure last point matches current value exactly
+  // Smooth convergence to final value in last 8% of chart
+  const convergenceStart = Math.floor(points * 0.92);
+  for (let i = convergenceStart; i < points; i++) {
+    const t = (i - convergenceStart) / (points - 1 - convergenceStart);
+    const easeT = t * t * (3 - 2 * t); // Smooth step
+    data[i] = data[i] * (1 - easeT) + baseValue * easeT;
+  }
   data[data.length - 1] = baseValue;
 
-  // Smooth the transition to final value
-  const smoothPoints = Math.min(5, data.length - 1);
-  for (let i = 1; i <= smoothPoints; i++) {
-    const idx = data.length - 1 - i;
-    const t = i / smoothPoints;
-    data[idx] = data[idx] * t + baseValue * (1 - t) * 0.3 + data[idx] * 0.7;
-  }
-
-  // Reduce to display points while preserving key features
+  // Reduce to display points while preserving features
   const displayPoints = 80;
   if (data.length <= displayPoints) return data;
 
