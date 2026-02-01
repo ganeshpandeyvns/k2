@@ -75,20 +75,21 @@ export type MainTabParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+// Import premium SVG icons
+import { HomeIcon, MarketsIcon, PortfolioIcon, SettingsIcon } from '../components/icons/TabBarIcons';
+
 // Custom Tab Bar Icon Component
 const TabIcon = ({ label, focused }: { label: string; focused: boolean }) => {
-  const icons: Record<string, string> = {
-    Home: '🏠',
-    Markets: '📊',
-    Portfolio: '💼',
-    Settings: '⚙️',
-  };
+  const IconComponent = {
+    Home: HomeIcon,
+    Markets: MarketsIcon,
+    Portfolio: PortfolioIcon,
+    Settings: SettingsIcon,
+  }[label];
 
   return (
     <View style={styles.tabIconContainer}>
-      <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-        {icons[label]}
-      </Text>
+      {IconComponent && <IconComponent size={24} focused={focused} />}
       {focused && <View style={styles.tabIndicator} />}
     </View>
   );
@@ -268,20 +269,15 @@ const styles = StyleSheet.create({
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  tabIcon: {
-    fontSize: 22,
-    opacity: 0.5,
-  },
-  tabIconFocused: {
-    opacity: 1,
+    width: 32,
+    height: 32,
   },
   tabIndicator: {
     position: 'absolute',
-    bottom: -8,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    bottom: -6,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: MeruTheme.colors.accent.primary,
   },
 });

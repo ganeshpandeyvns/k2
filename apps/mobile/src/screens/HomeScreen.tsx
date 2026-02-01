@@ -19,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import { MeruTheme, DemoUser, formatCurrency, formatPercent } from '../theme/meru';
+import { formatCryptoQuantity } from '../utils/mockData';
+import { DepositIcon, WithdrawIcon, SwapIcon, SendIcon, BellIcon } from '../components/icons/TabBarIcons';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore } from '../store/portfolioStore';
@@ -46,11 +48,11 @@ const CHANGE_24H = 3247.89;
 const CHANGE_PERCENT_24H = 2.61;
 
 // Quick actions with navigation
-const QUICK_ACTIONS: { id: string; icon: string; label: string; screen: keyof RootStackParamList }[] = [
-  { id: 'deposit', icon: '↓', label: 'Deposit', screen: 'Deposit' },
-  { id: 'withdraw', icon: '↑', label: 'Withdraw', screen: 'Withdraw' },
-  { id: 'swap', icon: '⇄', label: 'Swap', screen: 'Swap' },
-  { id: 'send', icon: '→', label: 'Send', screen: 'Send' },
+const QUICK_ACTIONS: { id: string; IconComponent: React.FC<{ size?: number; color?: string }>; label: string; screen: keyof RootStackParamList }[] = [
+  { id: 'deposit', IconComponent: DepositIcon, label: 'Deposit', screen: 'Deposit' },
+  { id: 'withdraw', IconComponent: WithdrawIcon, label: 'Withdraw', screen: 'Withdraw' },
+  { id: 'swap', IconComponent: SwapIcon, label: 'Swap', screen: 'Swap' },
+  { id: 'send', IconComponent: SendIcon, label: 'Send', screen: 'Send' },
 ];
 
 export function HomeScreen() {
@@ -145,14 +147,15 @@ export function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Background Gradient */}
+      {/* Background Gradient - Rich multi-layer effect */}
       <LinearGradient
         colors={[
-          MeruTheme.colors.accent.primary + '15',
+          MeruTheme.colors.accent.primary + '18',
+          MeruTheme.colors.accent.secondary + '08',
           MeruTheme.colors.background.primary,
           MeruTheme.colors.background.primary,
         ]}
-        locations={[0, 0.3, 1]}
+        locations={[0, 0.15, 0.4, 1]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -185,7 +188,7 @@ export function HomeScreen() {
           <View style={styles.headerRight}>
             <Pressable style={styles.notificationButton}>
               <View style={styles.notificationDot} />
-              <Text style={styles.notificationIcon}>🔔</Text>
+              <BellIcon size={22} color={MeruTheme.colors.text.primary} />
             </Pressable>
           </View>
         </Animated.View>
@@ -230,7 +233,7 @@ export function HomeScreen() {
                 ]}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>{action.icon}</Text>
+                <action.IconComponent size={26} color={MeruTheme.colors.accent.primary} />
               </LinearGradient>
               <Text style={styles.quickActionLabel}>{action.label}</Text>
             </Pressable>
@@ -269,15 +272,20 @@ export function HomeScreen() {
                 }
               >
                 <View style={styles.assetLeft}>
-                  <View style={[styles.assetIcon, { backgroundColor: asset.color + '20' }]}>
-                    <Text style={[styles.assetIconText, { color: asset.color }]}>
+                  <LinearGradient
+                    colors={[asset.color, asset.color + 'CC']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.assetIcon}
+                  >
+                    <Text style={styles.assetIconText}>
                       {asset.symbol[0]}
                     </Text>
-                  </View>
+                  </LinearGradient>
                   <View style={styles.assetInfo}>
                     <Text style={styles.assetName}>{asset.name}</Text>
                     <Text style={styles.assetHoldings}>
-                      {asset.holdings} {asset.symbol}
+                      {formatCryptoQuantity(asset.holdings, asset.symbol)} {asset.symbol}
                     </Text>
                   </View>
                 </View>
@@ -348,11 +356,16 @@ export function HomeScreen() {
                   pressed && styles.moverCardPressed,
                 ]}
               >
-                <View style={[styles.moverIcon, { backgroundColor: token.color + '20' }]}>
-                  <Text style={[styles.moverIconText, { color: token.color }]}>
+                <LinearGradient
+                  colors={[token.color, token.color + 'CC']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.moverIcon}
+                >
+                  <Text style={styles.moverIconText}>
                     {token.symbol[0]}
                   </Text>
-                </View>
+                </LinearGradient>
                 <Text style={styles.moverSymbol}>{token.symbol}</Text>
                 <Text style={styles.moverPrice}>
                   ${token.price < 0.01 ? token.price.toFixed(8) : token.price.toFixed(2)}
@@ -415,11 +428,15 @@ const styles = StyleSheet.create({
   },
   headerLeft: {},
   greeting: {
-    ...MeruTheme.typography.body,
+    fontSize: 15,
+    fontWeight: '400',
     color: MeruTheme.colors.text.secondary,
+    marginBottom: 2,
   },
   userName: {
-    ...MeruTheme.typography.h1,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: MeruTheme.colors.text.primary,
   },
   headerRight: {
@@ -433,9 +450,6 @@ const styles = StyleSheet.create({
     backgroundColor: MeruTheme.colors.background.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  notificationIcon: {
-    fontSize: 20,
   },
   notificationDot: {
     position: 'absolute',
@@ -462,17 +476,18 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
   quickActionGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: MeruTheme.colors.border.subtle,
-  },
-  quickActionIcon: {
-    fontSize: 24,
-    color: MeruTheme.colors.accent.primary,
+    borderColor: MeruTheme.colors.border.light,
+    shadowColor: MeruTheme.colors.accent.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   quickActionLabel: {
     ...MeruTheme.typography.caption,
@@ -489,11 +504,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    ...MeruTheme.typography.h3,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
     color: MeruTheme.colors.text.primary,
   },
   seeAllButton: {
-    ...MeruTheme.typography.bodyMedium,
+    fontSize: 14,
+    fontWeight: '600',
     color: MeruTheme.colors.accent.primary,
   },
   assetsContainer: {
@@ -508,10 +526,17 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: MeruTheme.colors.border.subtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   assetCardPressed: {
     backgroundColor: MeruTheme.colors.background.tertiary,
     transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   assetLeft: {
     flex: 1,
@@ -529,6 +554,10 @@ const styles = StyleSheet.create({
   assetIconText: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   assetInfo: {
     gap: 2,
@@ -549,11 +578,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   assetValue: {
-    ...MeruTheme.typography.number,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.2,
     color: MeruTheme.colors.text.primary,
   },
   assetChange: {
-    ...MeruTheme.typography.caption,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
   },
   moversScrollContent: {
     paddingHorizontal: 16,
@@ -568,9 +601,15 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: MeruTheme.colors.border.subtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   moverCardPressed: {
     backgroundColor: MeruTheme.colors.background.tertiary,
+    transform: [{ scale: 0.97 }],
   },
   moverIcon: {
     width: 40,
@@ -582,6 +621,10 @@ const styles = StyleSheet.create({
   moverIconText: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   moverSymbol: {
     ...MeruTheme.typography.bodyMedium,

@@ -5,6 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 import { MeruTheme, formatCurrency } from '../theme/meru';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,50 +20,109 @@ interface PortfolioChartProps {
   changePercent24h: number;
 }
 
-// Generate realistic portfolio data
+// Perlin-like noise for smooth organic movement
+const smoothNoise = (x: number, seed: number): number => {
+  const n = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+};
+
+// Interpolate smoothly between noise samples
+const smoothInterpolate = (a: number, b: number, t: number): number => {
+  const ft = t * Math.PI;
+  const f = (1 - Math.cos(ft)) * 0.5;
+  return a * (1 - f) + b * f;
+};
+
+// Generate smooth noise value at position
+const getSmoothNoise = (x: number, seed: number): number => {
+  const intX = Math.floor(x);
+  const fracX = x - intX;
+  const v1 = smoothNoise(intX, seed);
+  const v2 = smoothNoise(intX + 1, seed);
+  return smoothInterpolate(v1, v2, fracX);
+};
+
+// Generate realistic portfolio data with smooth organic movement
 const generatePortfolioData = (baseValue: number, range: TimeRange): number[] => {
   const pointsMap: Record<TimeRange, number> = {
-    '1D': 24,
-    '1W': 7 * 24,
-    '1M': 30,
-    '3M': 90,
+    '1D': 96,      // More points for smoother curves
+    '1W': 168,
+    '1M': 120,
+    '3M': 180,
     '1Y': 365,
     'ALL': 730,
   };
 
   const volatilityMap: Record<TimeRange, number> = {
-    '1D': 0.005,
-    '1W': 0.008,
-    '1M': 0.012,
-    '3M': 0.015,
-    '1Y': 0.02,
-    'ALL': 0.025,
+    '1D': 0.003,
+    '1W': 0.006,
+    '1M': 0.01,
+    '3M': 0.012,
+    '1Y': 0.018,
+    'ALL': 0.022,
   };
 
   const points = pointsMap[range];
   const volatility = volatilityMap[range];
 
+  // Generate a random seed for this chart instance
+  const seed = Math.random() * 1000;
+
   // Start from a lower value and trend up to current
-  const startValue = baseValue * (0.7 + Math.random() * 0.2);
-  const data: number[] = [startValue];
-  let price = startValue;
+  const startValue = baseValue * (0.75 + Math.random() * 0.15);
+  const data: number[] = [];
 
-  const targetGrowth = (baseValue - startValue) / points;
+  // Calculate the overall trend needed
+  const totalGrowth = baseValue - startValue;
 
-  for (let i = 1; i < points; i++) {
-    const randomChange = (Math.random() - 0.5) * volatility * price;
-    const trendChange = targetGrowth * (1 + (Math.random() - 0.5) * 0.5);
-    price = price + randomChange + trendChange;
-    data.push(Math.max(price, startValue * 0.5));
+  for (let i = 0; i < points; i++) {
+    const progress = i / (points - 1);
+
+    // Base trend (smooth growth towards target)
+    const trendValue = startValue + totalGrowth * progress;
+
+    // Layer multiple noise frequencies for organic movement
+    const noise1 = getSmoothNoise(i * 0.1, seed) - 0.5;       // Slow waves
+    const noise2 = getSmoothNoise(i * 0.3, seed + 100) - 0.5; // Medium waves
+    const noise3 = getSmoothNoise(i * 0.7, seed + 200) - 0.5; // Fast ripples
+
+    // Combine noises with different weights
+    const combinedNoise = noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1;
+
+    // Apply volatility scaled by value
+    const noiseAmount = combinedNoise * volatility * trendValue;
+
+    // Add momentum (prices tend to continue their direction briefly)
+    const momentum = i > 0 ? (data[i - 1] - (data[i - 2] || data[0])) * 0.3 : 0;
+
+    const value = trendValue + noiseAmount + momentum;
+    data.push(Math.max(value, startValue * 0.6));
   }
 
-  // Ensure last point matches current value
-  data.push(baseValue);
+  // Ensure last point matches current value exactly
+  data[data.length - 1] = baseValue;
 
-  // Reduce to display points
-  const displayPoints = 60;
-  const step = Math.ceil(data.length / displayPoints);
-  return data.filter((_, i) => i % step === 0 || i === data.length - 1);
+  // Smooth the transition to final value
+  const smoothPoints = Math.min(5, data.length - 1);
+  for (let i = 1; i <= smoothPoints; i++) {
+    const idx = data.length - 1 - i;
+    const t = i / smoothPoints;
+    data[idx] = data[idx] * t + baseValue * (1 - t) * 0.3 + data[idx] * 0.7;
+  }
+
+  // Reduce to display points while preserving key features
+  const displayPoints = 80;
+  if (data.length <= displayPoints) return data;
+
+  const step = data.length / displayPoints;
+  const result: number[] = [];
+  for (let i = 0; i < displayPoints; i++) {
+    const idx = Math.min(Math.floor(i * step), data.length - 1);
+    result.push(data[idx]);
+  }
+  result[result.length - 1] = baseValue;
+
+  return result;
 };
 
 export const PortfolioChart: React.FC<PortfolioChartProps> = ({
@@ -232,7 +292,10 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
               styles.rangeButton,
               selectedRange === range && styles.rangeButtonActive,
             ]}
-            onPress={() => setSelectedRange(range)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedRange(range);
+            }}
           >
             <Text
               style={[
@@ -259,12 +322,17 @@ const styles = StyleSheet.create({
   valueLabel: {
     ...MeruTheme.typography.caption,
     color: MeruTheme.colors.text.tertiary,
-    marginBottom: 4,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontSize: 12,
   },
   valueAmount: {
-    ...MeruTheme.typography.numberHuge,
+    fontSize: 42,
+    fontWeight: '800',
+    letterSpacing: -1.5,
     color: MeruTheme.colors.text.primary,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   changeRow: {
     flexDirection: 'row',
@@ -289,24 +357,32 @@ const styles = StyleSheet.create({
   rangeSelector: {
     flexDirection: 'row',
     backgroundColor: MeruTheme.colors.background.secondary,
-    borderRadius: MeruTheme.radius.lg,
+    borderRadius: MeruTheme.radius.xl,
     padding: 4,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
   },
   rangeButton: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: MeruTheme.radius.md,
+    borderRadius: MeruTheme.radius.lg,
   },
   rangeButtonActive: {
     backgroundColor: MeruTheme.colors.background.elevated,
+    shadowColor: MeruTheme.colors.accent.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   rangeButtonText: {
     ...MeruTheme.typography.caption,
     color: MeruTheme.colors.text.tertiary,
+    fontWeight: '500',
   },
   rangeButtonTextActive: {
-    color: MeruTheme.colors.text.primary,
-    fontWeight: '600',
+    color: MeruTheme.colors.accent.primary,
+    fontWeight: '700',
   },
 });

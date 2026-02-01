@@ -87,10 +87,78 @@ export const formatCurrency = (amount: number, decimals = 2): string => {
   }).format(amount);
 };
 
-// Format crypto amount
+// Format crypto amount - Smart formatting that avoids floating point display issues
 export const formatCrypto = (amount: number, symbol: string): string => {
-  const decimals = ['BTC', 'ETH'].includes(symbol) ? 8 : 2;
-  return `${amount.toFixed(decimals)} ${symbol}`;
+  // Handle edge cases
+  if (amount === 0) return `0 ${symbol}`;
+  if (isNaN(amount)) return `0 ${symbol}`;
+
+  const absAmount = Math.abs(amount);
+
+  // Determine decimals based on asset type and amount size
+  let decimals: number;
+  if (['BTC'].includes(symbol)) {
+    // BTC: show more decimals for small amounts, fewer for large
+    if (absAmount >= 1) decimals = 4;
+    else if (absAmount >= 0.01) decimals = 6;
+    else decimals = 8;
+  } else if (['ETH'].includes(symbol)) {
+    // ETH: similar logic
+    if (absAmount >= 10) decimals = 3;
+    else if (absAmount >= 1) decimals = 4;
+    else decimals = 6;
+  } else if (['USDC', 'USDT', 'DAI'].includes(symbol)) {
+    // Stablecoins: always 2 decimals
+    decimals = 2;
+  } else if (['SOL', 'AVAX', 'MATIC', 'DOT', 'ADA'].includes(symbol)) {
+    // Mid-tier: 2-4 decimals based on amount
+    if (absAmount >= 100) decimals = 2;
+    else if (absAmount >= 1) decimals = 3;
+    else decimals = 4;
+  } else {
+    // Default
+    decimals = absAmount >= 1 ? 2 : 6;
+  }
+
+  // Format with locale for thousands separators, then trim trailing zeros
+  const formatted = amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  });
+
+  return `${formatted} ${symbol}`;
+};
+
+// Format crypto quantity only (no symbol) - for display in asset rows
+export const formatCryptoQuantity = (amount: number, symbol: string): string => {
+  if (amount === 0) return '0';
+  if (isNaN(amount)) return '0';
+
+  const absAmount = Math.abs(amount);
+
+  let decimals: number;
+  if (['BTC'].includes(symbol)) {
+    if (absAmount >= 1) decimals = 4;
+    else if (absAmount >= 0.01) decimals = 6;
+    else decimals = 8;
+  } else if (['ETH'].includes(symbol)) {
+    if (absAmount >= 10) decimals = 3;
+    else if (absAmount >= 1) decimals = 4;
+    else decimals = 6;
+  } else if (['USDC', 'USDT', 'DAI'].includes(symbol)) {
+    decimals = 2;
+  } else if (['SOL', 'AVAX', 'MATIC', 'DOT', 'ADA'].includes(symbol)) {
+    if (absAmount >= 100) decimals = 2;
+    else if (absAmount >= 1) decimals = 3;
+    else decimals = 4;
+  } else {
+    decimals = absAmount >= 1 ? 2 : 6;
+  }
+
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  });
 };
 
 // Validate wallet address format (basic validation)

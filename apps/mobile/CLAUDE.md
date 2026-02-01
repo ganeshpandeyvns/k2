@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code when working with the Meru Trading App.
 
+## CRITICAL: Development Guidelines
+
+This is a **financial trading application** - bugs can cost users money. Before writing code, follow these rules:
+
+### Golden Rule: No Regressions
+**ANY fix or enhancement MUST NOT break existing functionality.** Before committing:
+1. Run `npm test` - ALL tests must pass
+2. Visually verify affected screens still work
+3. Test related flows end-to-end
+4. If a fix breaks something else, fix that FIRST
+
+- **No hardcoded secrets** - Fail fast if env vars missing, never commit API keys
+- **Enforce business rules everywhere** - Balance checks, KYC, limits at ALL entry points (screens, stores, services)
+- **No demo data in production** - Show errors, not fake data when APIs fail
+- **Think adversarially** - Verify ownership, check permissions on every action
+- **Use transactions** - Wrap read-then-write operations atomically (check balance → deduct → execute)
+- **Fail secure** - Unknown state = denied, not allowed
+- **Validate at boundaries** - All user input must be sanitized before use
+- **Double-tap protection** - All transaction buttons must prevent rapid re-submission
+
 ## Project Overview
 
 Meru is a mobile trading application built with React Native/Expo that allows users to trade crypto and event contracts. The app features:
@@ -79,6 +99,7 @@ src/
 | ID | Weight | Pattern |
 |----|--------|---------|
 | P003 | 1.8 | Balance validation before transactions |
+| P010 | 1.6 | Large transaction confirmation (>$1000) |
 | P018 | 1.6 | Portfolio cost basis updates |
 | P002 | 1.5 | Division by zero protection |
 | P019 | 1.5 | Cash balance updates |
@@ -109,21 +130,59 @@ Issue: src/screens/TradeScreen.tsx:150 - Dollar input allows negative values, ME
 6. Update `qa-loop/metrics.json` score
 7. Commit all changes
 
-### Post-Fix Verification
+### CRITICAL: Post-Fix Verification (Regression Testing)
 
-After fixing ANY bug:
-1. Add a regression test for the fix
-2. Run: `npm test`
-3. If tests pass, commit
-4. If tests fail, fix regression first
+**After fixing ANY bug, you MUST run regression tests to ensure fixes don't break existing functionality.**
 
-## Key Business Rules
+```bash
+# Run all tests after any fix
+npm test
+```
 
-- **Balance validation**: Always check balance BEFORE executing transactions
-- **Large orders**: Require confirmation for orders >$1000
-- **Dollar mode**: Force market orders, show slippage warning
-- **KYC**: Block deposits/withdrawals for unverified users
-- **Address validation**: Validate wallet addresses per chain (BTC/ETH/SOL)
+**When adding a new fix:**
+1. Fix the bug in the code
+2. Add a regression test for the specific fix in `__tests__/`
+3. Run `npm test` to verify all tests pass
+4. If tests pass, commit with descriptive message
+5. If tests fail, fix the regression BEFORE committing
+
+**Regression test locations:**
+- Store logic: `__tests__/store/*.test.ts`
+- Utilities: `__tests__/utils/*.test.ts`
+- Validation: `__tests__/utils/validation.test.ts`
+- Trading calculations: `__tests__/utils/trading.test.ts`
+
+**Test naming convention:**
+```typescript
+it('should [expected behavior] when [condition]', () => {
+  // Arrange, Act, Assert
+});
+```
+
+## Business Rules (Enforce at ALL Entry Points)
+
+These rules MUST be checked at all entry points (screens, store actions, API calls):
+
+### Transaction Safety
+- **Balance validation**: Check at screen load AND before execution - never trust cached values
+- **Large transaction confirmation**: >$1000 requires explicit Alert confirmation
+- **Double-tap protection**: Disable buttons during processing, use `isProcessing` state
+- **Atomic operations**: Balance check → deduct → execute must be atomic
+
+### Trading Rules
+- **Dollar mode**: Force market orders, show slippage warning disclosure
+- **Quantity mode**: Allow limit orders, validate against holdings for sells
+- **Price validation**: Protect against division by zero, handle NaN gracefully
+
+### Compliance
+- **KYC required**: Block deposits/withdrawals/large sends for unverified users
+- **Asset ownership**: Verify user owns asset before any sell/send operation
+- **Address validation**: Validate wallet addresses per chain (BTC/ETH/SOL formats differ)
+
+### Limits
+- **Minimum deposit**: $10
+- **Minimum order**: $1.00 for dollar-based orders
+- **Confirmation threshold**: $1000 for all transaction types
 
 ## Testing Conventions
 
@@ -152,3 +211,45 @@ Use utilities from `src/utils/`:
 - `sanitizeAmountInput()` - Clean numeric input
 - `validateAddress()` - Validate wallet addresses
 - `isValidTransactionAmount()` - Check amount validity
+
+## Environment Variables
+
+The app runs in **Demo Mode** by default (no real backend required). For production:
+
+```bash
+# .env or app.config.js
+API_BASE_URL=https://api.meru.com    # Backend API endpoint
+DEMO_MODE=false                       # Set false for real transactions
+```
+
+**Demo Mode Behavior:**
+- All transactions are simulated locally
+- No real money movement
+- Mock prices and exchange rates
+- Instant "success" for all operations
+
+**Required for Production:**
+- `API_BASE_URL` - Backend API endpoint
+- `STRIPE_PUBLISHABLE_KEY` - For payment processing
+- `SENTRY_DSN` - Error tracking (optional)
+
+## Demo Credentials & Testing
+
+### Default Demo State
+The app initializes with:
+- **Cash Balance**: $10,000
+- **Holdings**: Pre-loaded BTC, ETH, SOL positions
+- **KYC Status**: Verified (for testing all flows)
+- **Payment Method**: Demo bank account linked
+
+### Testing Different States
+Reset stores in Settings or use store actions:
+```typescript
+// Reset to initial state
+usePortfolioStore.getState().reset();
+useFundingStore.getState().reset();
+useKYCStore.getState().reset();
+```
+
+### Demo Mode Indicator
+All transaction screens show "Demo Mode - No real money" badge to prevent confusion.

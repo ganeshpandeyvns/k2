@@ -95,6 +95,48 @@ These bugs were fixed before QA loop was set up:
 
 ---
 
+## Session 3 - 2026-02-01 (UI/UX Polish)
+
+**Score Change**: +200 (No new bugs) + 0 (pattern catches) = +200
+**Running Score**: 620
+
+### UI/UX Fixes Applied
+| # | Issue | Severity | File(s) | Fix |
+|---|-------|----------|---------|-----|
+| 1 | BTC floating point display (1.2351538899999999) | HIGH | mockData.ts, HomeScreen.tsx | Added formatCryptoQuantity() with smart decimals |
+| 2 | Bottom tab emoji icons | MEDIUM | RootNavigator.tsx, TabBarIcons.tsx | Created SVG icons for Home, Markets, Portfolio, Settings |
+| 3 | Quick action unicode arrows | MEDIUM | HomeScreen.tsx, TabBarIcons.tsx | Created SVG Deposit, Withdraw, Swap, Send icons |
+| 4 | Notification bell emoji | LOW | HomeScreen.tsx, TabBarIcons.tsx | Created SVG BellIcon component |
+| 5 | Portfolio chart looks fake/jagged | HIGH | PortfolioChart.tsx | Perlin-like smooth noise generation |
+| 6 | Mini charts look synthetic | HIGH | MiniChart.tsx | Smooth noise interpolation algorithm |
+| 7 | Asset letter icons basic | MEDIUM | HomeScreen.tsx | Added gradient fills with text shadows |
+| 8 | Time range selector basic | LOW | PortfolioChart.tsx | Added shadows, haptic feedback, gold active text |
+| 9 | Cards lack depth | MEDIUM | HomeScreen.tsx | Added layered shadows to asset/mover cards |
+| 10 | Typography hierarchy weak | MEDIUM | HomeScreen.tsx, PortfolioChart.tsx | Refined font sizes, weights, letter-spacing |
+| 11 | Background gradient basic | LOW | HomeScreen.tsx | Enhanced multi-layer gradient with 4 color stops |
+
+### Files Created
+- `src/components/icons/TabBarIcons.tsx` - Premium SVG icons
+
+### Files Modified
+- `src/utils/mockData.ts` - formatCrypto, formatCryptoQuantity functions
+- `src/screens/HomeScreen.tsx` - Icons, styling, formatting
+- `src/navigation/RootNavigator.tsx` - SVG tab icons
+- `src/components/PortfolioChart.tsx` - Smooth chart generation
+- `src/components/MiniChart.tsx` - Smooth sparkline generation
+
+### Tests
+- All 146 tests passing
+- No regressions introduced
+
+### Score Calculation
+- No new bugs found: +200
+- Pattern catches: 0
+- New patterns: 0
+- **Total**: +200
+
+---
+
 ## Template for Future Sessions
 
 ```markdown

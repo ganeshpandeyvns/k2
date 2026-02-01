@@ -98,22 +98,64 @@ export const MiniChart: React.FC<MiniChartProps> = ({
   );
 };
 
-// Generate fake chart data for demo
+// Smooth noise helper
+const miniChartNoise = (x: number, seed: number): number => {
+  const n = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+};
+
+const miniChartInterpolate = (a: number, b: number, t: number): number => {
+  const ft = t * Math.PI;
+  const f = (1 - Math.cos(ft)) * 0.5;
+  return a * (1 - f) + b * f;
+};
+
+const getMiniChartNoise = (x: number, seed: number): number => {
+  const intX = Math.floor(x);
+  const fracX = x - intX;
+  const v1 = miniChartNoise(intX, seed);
+  const v2 = miniChartNoise(intX + 1, seed);
+  return miniChartInterpolate(v1, v2, fracX);
+};
+
+// Generate smooth, realistic chart data for mini sparklines
 export const generateChartData = (
   basePrice: number,
   volatility: number = 0.02,
   points: number = 24,
   trend: 'up' | 'down' | 'neutral' = 'neutral'
 ): number[] => {
-  const data: number[] = [basePrice];
-  let price = basePrice;
+  const seed = Math.random() * 1000;
+  const data: number[] = [];
 
-  const trendBias = trend === 'up' ? 0.001 : trend === 'down' ? -0.001 : 0;
+  // Determine start and end based on trend
+  const trendMultiplier = trend === 'up' ? 1 : trend === 'down' ? -1 : 0;
+  const trendAmount = volatility * 2 * trendMultiplier;
 
-  for (let i = 1; i < points; i++) {
-    const change = (Math.random() - 0.5) * volatility + trendBias;
-    price = price * (1 + change);
-    data.push(price);
+  const startPrice = basePrice * (1 - trendAmount * 0.5);
+  const endPrice = basePrice * (1 + trendAmount * 0.5);
+
+  for (let i = 0; i < points; i++) {
+    const progress = i / (points - 1);
+
+    // Smooth progression from start to end
+    const trendValue = startPrice + (endPrice - startPrice) * progress;
+
+    // Layer smooth noise for organic movement
+    const noise1 = getMiniChartNoise(i * 0.2, seed) - 0.5;
+    const noise2 = getMiniChartNoise(i * 0.5, seed + 50) - 0.5;
+
+    const combinedNoise = noise1 * 0.7 + noise2 * 0.3;
+    const noiseAmount = combinedNoise * volatility * basePrice;
+
+    data.push(trendValue + noiseAmount);
+  }
+
+  // Ensure the trend direction is clear by adjusting endpoints
+  if (trend === 'up') {
+    data[data.length - 1] = Math.max(data[data.length - 1], data[0] * 1.01);
+  } else if (trend === 'down') {
+    data[data.length - 1] = Math.min(data[data.length - 1], data[0] * 0.99);
   }
 
   return data;
