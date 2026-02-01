@@ -42,7 +42,7 @@ export const HomeIcon: React.FC<IconProps> = ({
   );
 };
 
-// Markets Icon - Wall Street Charging Bull (classic silhouette, facing right)
+// Markets Icon - Graceful Rocket (growth/markets going up)
 export const MarketsIcon: React.FC<IconProps> = ({
   size = 24,
   color = MeruTheme.colors.text.tertiary,
@@ -51,79 +51,54 @@ export const MarketsIcon: React.FC<IconProps> = ({
   const activeColor = focused ? MeruTheme.colors.accent.primary : color;
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {focused ? (
         <G>
-          {/* Main body */}
+          {/* Rocket body */}
           <Path
-            d="M4 10 C3 8 2 6 3 5 L5 6 C6 7 6 9 7 10 C8 9 10 7 14 6 C18 5 22 6 24 8 C25 9 26 11 25 13 C24 15 22 16 20 17 L19 20 L18 24 H16 L17 20 L15 18 L14 20 L13 24 H11 L12 20 L10 17 C8 16 6 15 5 13 C4 12 4 11 5 10 Z"
+            d="M12 2C12 2 8 6 8 12C8 15 9 17 10 19L12 22L14 19C15 17 16 15 16 12C16 6 12 2 12 2Z"
             fill={activeColor}
           />
-          {/* Tail */}
+          {/* Window */}
+          <Circle cx="12" cy="10" r="2" fill={MeruTheme.colors.background.primary} />
+          {/* Left fin */}
           <Path
-            d="M4 10 C3 9 2 7 1 8 C0 9 1 11 2 10"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-          {/* Head */}
-          <Path
-            d="M25 13 C26 12 28 11 29 11 C30 11 30 12 29 13"
+            d="M8 14L5 17L8 16"
             fill={activeColor}
           />
-          {/* Top horn */}
+          {/* Right fin */}
           <Path
-            d="M29 11 L31 9"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-          {/* Bottom horn */}
-          <Path
-            d="M29 13 L31 14"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-          {/* Front legs */}
-          <Path
-            d="M22 17 L23 21 L22 24 M24 15 L26 20 L25 24"
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeLinecap="round"
+            d="M16 14L19 17L16 16"
+            fill={activeColor}
           />
         </G>
       ) : (
         <G>
-          {/* Body outline */}
+          {/* Rocket body outline */}
           <Path
-            d="M4 10 C3 8 2 6 3 5 C6 7 6 9 7 10 C8 9 10 7 14 6 C18 5 22 6 24 8 C25 9 26 11 25 13 C26 12 28 11 29 11 C30 11 30 12 29 13 C28 14 26 15 25 15 C24 16 22 17 20 17"
+            d="M12 2C12 2 8 6 8 12C8 15 9 17 10 19L12 22L14 19C15 17 16 15 16 12C16 6 12 2 12 2Z"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Underside and legs */}
+          {/* Window */}
+          <Circle cx="12" cy="10" r="2" stroke={activeColor} strokeWidth={1.5} />
+          {/* Left fin */}
           <Path
-            d="M7 10 C6 11 5 12 5 13 C5 15 7 16 10 17 L12 20 L11 24 M14 18 L13 24 M19 20 L18 24 M22 17 L23 24 M24 15 L26 24"
+            d="M8 14L5 17L8 16"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Tail */}
+          {/* Right fin */}
           <Path
-            d="M4 10 C2 8 1 9 2 11"
+            d="M16 14L19 17L16 16"
             stroke={activeColor}
             strokeWidth={1.5}
             strokeLinecap="round"
-          />
-          {/* Horns */}
-          <Path
-            d="M29 11 L31 9 M29 13 L31 14"
-            stroke={activeColor}
-            strokeWidth={1.5}
-            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </G>
       )}
