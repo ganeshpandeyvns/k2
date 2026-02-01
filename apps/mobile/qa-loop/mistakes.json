@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "description": "Manual bug reports from testing. Use 'Issue:' prefix in chat to auto-add.",
+  "mistakes": [
+    {
+      "id": "M001",
+      "date": "2026-02-01",
+      "file": "src/screens/wallet/SendScreen.tsx",
+      "line": null,
+      "description": "SendScreen did not deduct crypto from holdings after sending",
+      "severity": "CRITICAL",
+      "reportedBy": "QA",
+      "patternCreated": "P003",
+      "fixed": true,
+      "fixCommit": "e624a1e"
+    },
+    {
+      "id": "M002",
+      "date": "2026-02-01",
+      "file": "src/screens/wallet/SendScreen.tsx",
+      "line": null,
+      "description": "Weak address validation - accepted invalid addresses",
+      "severity": "HIGH",
+      "reportedBy": "QA",
+      "patternCreated": "P012",
+      "fixed": true,
+      "fixCommit": "e624a1e"
+    },
+    {
+      "id": "M003",
+      "date": "2026-02-01",
+      "file": "src/screens/TradeScreen.tsx",
+      "line": null,
+      "description": "No confirmation for large orders (>$1000)",
+      "severity": "HIGH",
+      "reportedBy": "QA",
+      "patternCreated": "P010",
+      "fixed": true,
+      "fixCommit": "e624a1e"
+    },
+    {
+      "id": "M004",
+      "date": "2026-02-01",
+      "file": "src/store/fundingStore.ts",
+      "line": null,
+      "description": "Deposits not updating portfolio cash balance",
+      "severity": "CRITICAL",
+      "reportedBy": "QA",
+      "patternCreated": "P019",
+      "fixed": true,
+      "fixCommit": "previous"
+    }
+  ],
+  "stats": {
+    "totalReported": 4,
+    "totalFixed": 4,
+    "bySeverity": {
+      "CRITICAL": 2,
+      "HIGH": 2,
+      "MEDIUM": 0,
+      "LOW": 0
+    }
+  }
+}

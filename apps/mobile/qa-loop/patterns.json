@@ -1,0 +1,186 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-01",
+  "patterns": [
+    {
+      "id": "P001",
+      "trigger": "When I see numeric input fields (TextInput with keyboardType='decimal-pad')",
+      "check": "Check for input sanitization - reject non-numeric chars, multiple decimals, negative values",
+      "severity": "HIGH",
+      "category": "input-validation",
+      "example": "User enters '$100' or '1.2.3' and app crashes or behaves unexpectedly",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.2, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P002",
+      "trigger": "When I see division operations (especially price calculations)",
+      "check": "Check for division by zero - verify denominator is > 0 before dividing",
+      "severity": "CRITICAL",
+      "category": "calculation",
+      "example": "calculateQuantityFromDollars(100, 0) causes Infinity or NaN",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.5, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P003",
+      "trigger": "When I see balance/holdings checks before transactions",
+      "check": "Check that validation happens BEFORE the transaction, not after - and blocks the action",
+      "severity": "CRITICAL",
+      "category": "business-logic",
+      "example": "User can sell more crypto than they own if balance check is missing",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.8, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P004",
+      "trigger": "When I see Zustand store state updates",
+      "check": "Check that state is being properly spread/merged, not overwritten entirely",
+      "severity": "HIGH",
+      "category": "state-management",
+      "example": "set({ holdings }) overwrites entire state instead of set((state) => ({ ...state, holdings }))",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P005",
+      "trigger": "When I see async operations in React components",
+      "check": "Check for cleanup on unmount - cancel pending requests, clear timeouts/intervals",
+      "severity": "MEDIUM",
+      "category": "react-lifecycle",
+      "example": "Component unmounts while fetch is pending, causes 'setState on unmounted component'",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P006",
+      "trigger": "When I see navigation.navigate() calls",
+      "check": "Check that route names match exactly what's defined in RootNavigator",
+      "severity": "HIGH",
+      "category": "navigation",
+      "example": "navigation.navigate('deposit') fails because route is 'Deposit' (case sensitive)",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P007",
+      "trigger": "When I see price formatting/display",
+      "check": "Check handling of very small prices (meme coins) and very large prices",
+      "severity": "MEDIUM",
+      "category": "display",
+      "example": "SHIB price 0.00001234 displays as $0.00 due to rounding",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P008",
+      "trigger": "When I see useCallback or useMemo hooks",
+      "check": "Check that all dependencies are listed - missing deps cause stale closures",
+      "severity": "HIGH",
+      "category": "react-hooks",
+      "example": "useCallback references 'price' but doesn't list it in deps array",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P009",
+      "trigger": "When I see TouchableOpacity or Button with onPress",
+      "check": "Check for double-tap protection on transaction buttons",
+      "severity": "HIGH",
+      "category": "ux-safety",
+      "example": "User rapidly taps 'Buy' and creates duplicate orders",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.2, "lastUsed": null }
+    },
+    {
+      "id": "P010",
+      "trigger": "When I see order/transaction confirmation flows",
+      "check": "Check that large transactions (>$1000) require explicit confirmation",
+      "severity": "HIGH",
+      "category": "ux-safety",
+      "example": "User accidentally submits $10,000 order with no confirmation",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.3, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P011",
+      "trigger": "When I see parseFloat() or parseInt()",
+      "check": "Check for NaN handling - parseFloat('abc') returns NaN",
+      "severity": "MEDIUM",
+      "category": "type-safety",
+      "example": "parseFloat(userInput) || 0 is safer than just parseFloat(userInput)",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P012",
+      "trigger": "When I see wallet address inputs",
+      "check": "Check address validation per chain - BTC/ETH/SOL have different formats",
+      "severity": "HIGH",
+      "category": "validation",
+      "example": "ETH address accepted for BTC send, funds lost",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.4, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P013",
+      "trigger": "When I see market orders with dollar amounts",
+      "check": "Check that user is warned about price slippage for market orders",
+      "severity": "MEDIUM",
+      "category": "disclosure",
+      "example": "User expects exact price but market moved, no warning shown",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P014",
+      "trigger": "When I see quantity calculations with decimals",
+      "check": "Check for floating point precision issues - use toFixed() appropriately",
+      "severity": "MEDIUM",
+      "category": "calculation",
+      "example": "0.1 + 0.2 !== 0.3 in JavaScript, causes display issues",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P015",
+      "trigger": "When I see API calls without error handling",
+      "check": "Check for try/catch and user-friendly error messages",
+      "severity": "MEDIUM",
+      "category": "error-handling",
+      "example": "Network error shows raw 'TypeError: Failed to fetch' to user",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P016",
+      "trigger": "When I see persisted state (AsyncStorage, zustand persist)",
+      "check": "Check for migration logic when state shape changes",
+      "severity": "HIGH",
+      "category": "persistence",
+      "example": "Adding new required field breaks existing users' persisted state",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P017",
+      "trigger": "When I see optional chaining (?.)",
+      "check": "Check if undefined/null is actually a valid state or indicates a bug",
+      "severity": "LOW",
+      "category": "type-safety",
+      "example": "user?.email hides the bug that user should never be undefined here",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P018",
+      "trigger": "When I see portfolio/holdings updates after trades",
+      "check": "Check that BOTH the asset quantity AND cost basis are updated correctly",
+      "severity": "CRITICAL",
+      "category": "business-logic",
+      "example": "Buy 1 BTC updates quantity but not avgCost, P&L calculation wrong",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.6, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P019",
+      "trigger": "When I see deposit/withdraw flows",
+      "check": "Check that cash balance updates correctly - deposits add, withdrawals subtract",
+      "severity": "CRITICAL",
+      "category": "business-logic",
+      "example": "Deposit $500 but cash balance doesn't increase",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.5, "lastUsed": "2026-02-01" }
+    },
+    {
+      "id": "P020",
+      "trigger": "When I see KYC status checks",
+      "check": "Check that unverified users are blocked from deposits/withdrawals",
+      "severity": "HIGH",
+      "category": "compliance",
+      "example": "User bypasses KYC by navigating directly to deposit screen",
+      "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    }
+  ]
+}

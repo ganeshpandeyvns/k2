@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "goal": 500,
+  "currentScore": 0,
+  "sessions": [
+    {
+      "date": "2026-02-01",
+      "session": 1,
+      "bugsFound": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      },
+      "patternsApplied": [],
+      "patternsCaughtBugs": [],
+      "newPatternsAdded": 20,
+      "scoreChange": 500,
+      "runningScore": 500,
+      "notes": "Initial setup - created 20 patterns based on recent fixes"
+    }
+  ],
+  "scoring": {
+    "penalties": {
+      "CRITICAL": -100,
+      "HIGH": -50,
+      "MEDIUM": -20,
+      "LOW": -5
+    },
+    "rewards": {
+      "noNewBugs": 200,
+      "fewerBugsThanLastSession": 100,
+      "patternCaughtBug": 10,
+      "newPatternAdded": 25
+    }
+  },
+  "stats": {
+    "totalSessions": 1,
+    "totalBugsFound": 0,
+    "totalBugsFixed": 0,
+    "totalPatternsCreated": 20,
+    "mostEffectivePatterns": ["P003", "P018", "P019", "P002", "P012"]
+  }
+}
