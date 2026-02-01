@@ -26,6 +26,7 @@ import {
   SearchIcon,
   FilterIcon,
 } from '../components/icons/TabBarIcons';
+import { useTheme } from '../hooks/useTheme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -63,6 +64,9 @@ export function MarketsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('crypto');
   const [searchQuery, setSearchQuery] = useState('');
   const [chartData, setChartData] = useState<Record<string, number[]>>({});
+
+  // Get dynamic theme colors
+  const theme = useTheme();
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -135,7 +139,8 @@ export function MarketsScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.marketCard,
-            pressed && styles.marketCardPressed,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
           ]}
           onPress={() =>
             navigation.navigate('InstrumentDetail' as never, {
@@ -151,8 +156,8 @@ export function MarketsScreen() {
               </Text>
             </View>
             <View style={styles.marketInfo}>
-              <Text style={styles.marketSymbol}>{item.symbol}</Text>
-              <Text style={styles.marketName} numberOfLines={1}>
+              <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+              <Text style={[styles.marketName, { color: theme.colors.text.tertiary }]} numberOfLines={1}>
                 {item.name}
               </Text>
             </View>
@@ -171,7 +176,7 @@ export function MarketsScreen() {
 
           {/* Right: Price & Change */}
           <View style={styles.marketRight}>
-            <Text style={styles.marketPrice}>
+            <Text style={[styles.marketPrice, { color: theme.colors.text.primary }]}>
               {isEvent ? `${(item.price * 100).toFixed(0)}¢` : formatCurrency(item.price)}
             </Text>
             <View
@@ -180,8 +185,8 @@ export function MarketsScreen() {
                 {
                   backgroundColor:
                     item.change24h >= 0
-                      ? MeruTheme.colors.success.glow
-                      : MeruTheme.colors.error.glow,
+                      ? theme.colors.success.glow
+                      : theme.colors.error.glow,
                 },
               ]}
             >
@@ -191,8 +196,8 @@ export function MarketsScreen() {
                   {
                     color:
                       item.change24h >= 0
-                        ? MeruTheme.colors.success.primary
-                        : MeruTheme.colors.error.primary,
+                        ? theme.colors.success.primary
+                        : theme.colors.error.primary,
                   },
                 ]}
               >
@@ -212,12 +217,12 @@ export function MarketsScreen() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background.primary }]}>
       {/* Background */}
       <LinearGradient
         colors={[
-          MeruTheme.colors.background.secondary,
-          MeruTheme.colors.background.primary,
+          theme.colors.background.secondary,
+          theme.colors.background.primary,
         ]}
         style={StyleSheet.absoluteFill}
       />
@@ -229,10 +234,10 @@ export function MarketsScreen() {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <Text style={styles.title}>Markets</Text>
+        <Text style={[styles.title, { color: theme.colors.text.primary }]}>Markets</Text>
         <View style={styles.headerRight}>
-          <Pressable style={styles.filterButton}>
-            <FilterIcon size={20} color={MeruTheme.colors.text.secondary} />
+          <Pressable style={[styles.filterButton, { backgroundColor: theme.colors.background.secondary }]}>
+            <FilterIcon size={20} color={theme.colors.text.secondary} />
           </Pressable>
         </View>
       </Animated.View>
@@ -244,20 +249,20 @@ export function MarketsScreen() {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View style={styles.searchInputWrapper}>
+        <View style={[styles.searchInputWrapper, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
           <View style={styles.searchIconWrapper}>
-            <SearchIcon size={18} color={MeruTheme.colors.text.tertiary} />
+            <SearchIcon size={18} color={theme.colors.text.tertiary} />
           </View>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.colors.text.primary }]}
             placeholder="Search markets..."
-            placeholderTextColor={MeruTheme.colors.text.tertiary}
+            placeholderTextColor={theme.colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery('')}>
-              <Text style={styles.clearIcon}>✕</Text>
+              <Text style={[styles.clearIcon, { color: theme.colors.text.tertiary }]}>✕</Text>
             </Pressable>
           )}
         </View>
@@ -270,7 +275,7 @@ export function MarketsScreen() {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View style={styles.tabsWrapper}>
+        <View style={[styles.tabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -278,7 +283,7 @@ export function MarketsScreen() {
                 key={tab.id}
                 style={[
                   styles.tab,
-                  isActive && styles.tabActive,
+                  isActive && [styles.tabActive, { backgroundColor: theme.colors.background.elevated }],
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -288,17 +293,18 @@ export function MarketsScreen() {
                 <tab.IconComponent
                   size={16}
                   focused={isActive}
-                  color={isActive ? MeruTheme.colors.accent.primary : MeruTheme.colors.text.tertiary}
+                  color={isActive ? theme.colors.accent.primary : theme.colors.text.tertiary}
                 />
                 <Text
                   style={[
                     styles.tabLabel,
-                    isActive && styles.tabLabelActive,
+                    { color: theme.colors.text.tertiary },
+                    isActive && [styles.tabLabelActive, { color: theme.colors.text.primary }],
                   ]}
                 >
                   {tab.label}
                 </Text>
-                {isActive && <View style={styles.tabIndicator} />}
+                {isActive && <View style={[styles.tabIndicator, { backgroundColor: theme.colors.accent.primary }]} />}
               </Pressable>
             );
           })}
@@ -306,20 +312,20 @@ export function MarketsScreen() {
       </Animated.View>
 
       {/* Market Stats Bar */}
-      <View style={styles.statsBar}>
+      <View style={[styles.statsBar, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>24h Volume</Text>
-          <Text style={styles.statValue}>$89.4B</Text>
+          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>24h Volume</Text>
+          <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>$89.4B</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>BTC Dom</Text>
-          <Text style={styles.statValue}>52.3%</Text>
+          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>BTC Dom</Text>
+          <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>52.3%</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Fear/Greed</Text>
-          <Text style={[styles.statValue, { color: MeruTheme.colors.success.primary }]}>
+          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Fear/Greed</Text>
+          <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>
             74 Greed
           </Text>
         </View>
@@ -335,10 +341,10 @@ export function MarketsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrapper}>
-              <SearchIcon size={48} color={MeruTheme.colors.text.tertiary} />
+              <SearchIcon size={48} color={theme.colors.text.tertiary} />
             </View>
-            <Text style={styles.emptyTitle}>No markets found</Text>
-            <Text style={styles.emptySubtitle}>Try a different search term</Text>
+            <Text style={[styles.emptyTitle, { color: theme.colors.text.primary }]}>No markets found</Text>
+            <Text style={[styles.emptySubtitle, { color: theme.colors.text.tertiary }]}>Try a different search term</Text>
           </View>
         }
       />

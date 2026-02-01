@@ -22,12 +22,16 @@ import { useFundingStore } from '../store/fundingStore';
 import { useThemeStore, PREMIUM_THEMES } from '../store/themeStore';
 import { PaletteIcon, CheckIcon } from '../components/icons/TabBarIcons';
 import { MeruTheme } from '../theme/meru';
+import { useTheme } from '../hooks/useTheme';
 
 export function SettingsScreen() {
   const navigation = useNavigation();
   const { user, exchangeConnections, logout } = useAuthStore();
   const { paymentMethods } = useFundingStore();
   const { currentThemeId, setTheme } = useThemeStore();
+
+  // Get dynamic theme
+  const theme = useTheme();
 
   const handleThemeChange = (themeId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -42,25 +46,25 @@ export function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background.primary }]} edges={['top']}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={[styles.title, { color: theme.colors.text.primary }]}>Settings</Text>
         </View>
 
         {/* Account Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Account</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Email</Text>
-              <Text style={styles.rowValue}>{user?.email || 'dev@k2.app'}</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Email</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.text.secondary }]}>{user?.email || 'dev@k2.app'}</Text>
             </View>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Display Name</Text>
-              <Text style={styles.rowValue}>{user?.displayName || 'Development User'}</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Display Name</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.text.secondary }]}>{user?.displayName || 'Development User'}</Text>
             </View>
           </View>
         </View>
@@ -130,29 +134,30 @@ export function SettingsScreen() {
         {/* Appearance - Premium Theme Picker */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <PaletteIcon size={20} color={MeruTheme.colors.accent.primary} />
-            <Text style={styles.sectionTitle}>Appearance</Text>
-            <View style={styles.demoBadge}>
-              <Text style={styles.demoBadgeText}>DEMO</Text>
+            <PaletteIcon size={20} color={theme.colors.accent.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Appearance</Text>
+            <View style={[styles.demoBadge, { backgroundColor: theme.colors.accent.glow }]}>
+              <Text style={[styles.demoBadgeText, { color: theme.colors.accent.primary }]}>DEMO</Text>
             </View>
           </View>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.text.tertiary }]}>
             Preview premium themes - for investor demo only
           </Text>
           <View style={styles.themeGrid}>
-            {PREMIUM_THEMES.map((theme) => {
-              const isSelected = currentThemeId === theme.id;
+            {PREMIUM_THEMES.map((themeOption) => {
+              const isSelected = currentThemeId === themeOption.id;
               return (
                 <Pressable
-                  key={theme.id}
+                  key={themeOption.id}
                   style={[
                     styles.themeCard,
-                    isSelected && styles.themeCardSelected,
+                    { backgroundColor: theme.colors.background.secondary },
+                    isSelected && [styles.themeCardSelected, { borderColor: theme.colors.accent.primary, backgroundColor: theme.colors.accent.glow }],
                   ]}
-                  onPress={() => handleThemeChange(theme.id)}
+                  onPress={() => handleThemeChange(themeOption.id)}
                 >
                   <LinearGradient
-                    colors={theme.preview as [string, string, ...string[]]}
+                    colors={themeOption.preview as [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.themePreview}
@@ -165,14 +170,15 @@ export function SettingsScreen() {
                   </LinearGradient>
                   <Text style={[
                     styles.themeName,
-                    isSelected && styles.themeNameSelected,
+                    { color: theme.colors.text.primary },
+                    isSelected && { color: theme.colors.accent.primary },
                   ]}>
-                    {theme.name}
+                    {themeOption.name}
                   </Text>
-                  {theme.isDark ? (
-                    <Text style={styles.themeType}>Dark</Text>
+                  {themeOption.isDark ? (
+                    <Text style={[styles.themeType, { color: theme.colors.text.tertiary }]}>Dark</Text>
                   ) : (
-                    <Text style={[styles.themeType, styles.themeTypeLight]}>Light</Text>
+                    <Text style={[styles.themeType, { color: theme.colors.success.primary }]}>Light</Text>
                   )}
                 </Pressable>
               );

@@ -42,7 +42,7 @@ export const HomeIcon: React.FC<IconProps> = ({
   );
 };
 
-// Markets Icon - Clean chart with upward trend
+// Markets Icon - Bull (Stock Market Symbol)
 export const MarketsIcon: React.FC<IconProps> = ({
   size = 24,
   color = MeruTheme.colors.text.tertiary,
@@ -53,27 +53,70 @@ export const MarketsIcon: React.FC<IconProps> = ({
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {focused ? (
+        // Filled bull head
         <G>
-          <Rect x="3" y="12" width="4" height="9" rx="1" fill={activeColor} />
-          <Rect x="10" y="8" width="4" height="13" rx="1" fill={activeColor} />
-          <Rect x="17" y="3" width="4" height="18" rx="1" fill={activeColor} />
+          {/* Bull head */}
+          <Path
+            d="M12 8C8.5 8 6 10.5 6 14C6 17.5 8.5 20 12 20C15.5 20 18 17.5 18 14C18 10.5 15.5 8 12 8Z"
+            fill={activeColor}
+          />
+          {/* Left horn */}
+          <Path
+            d="M6 10C5 8 3 6 2 5C2.5 5 4 5.5 5 6.5C6 7.5 6.5 9 6.5 10"
+            fill={activeColor}
+          />
+          {/* Right horn */}
+          <Path
+            d="M18 10C19 8 21 6 22 5C21.5 5 20 5.5 19 6.5C18 7.5 17.5 9 17.5 10"
+            fill={activeColor}
+          />
+          {/* Eyes */}
+          <Circle cx="9.5" cy="13" r="1" fill={MeruTheme.colors.background.primary} />
+          <Circle cx="14.5" cy="13" r="1" fill={MeruTheme.colors.background.primary} />
+          {/* Nose ring */}
+          <Path
+            d="M10 17C10 18.1 10.9 19 12 19C13.1 19 14 18.1 14 17"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
         </G>
       ) : (
+        // Outline bull head
         <G>
-          <Rect
-            x="3" y="12" width="4" height="9" rx="1"
+          {/* Bull head outline */}
+          <Path
+            d="M12 8C8.5 8 6 10.5 6 14C6 17.5 8.5 20 12 20C15.5 20 18 17.5 18 14C18 10.5 15.5 8 12 8Z"
             stroke={activeColor}
-            strokeWidth={2}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <Rect
-            x="10" y="8" width="4" height="13" rx="1"
+          {/* Left horn */}
+          <Path
+            d="M6 10C5 8 3 6 2 5"
             stroke={activeColor}
-            strokeWidth={2}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <Rect
-            x="17" y="3" width="4" height="18" rx="1"
+          {/* Right horn */}
+          <Path
+            d="M18 10C19 8 21 6 22 5"
             stroke={activeColor}
-            strokeWidth={2}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Eyes */}
+          <Circle cx="9.5" cy="13" r="1" fill={activeColor} />
+          <Circle cx="14.5" cy="13" r="1" fill={activeColor} />
+          {/* Nose ring */}
+          <Path
+            d="M10 17C10 18.1 10.9 19 12 19C13.1 19 14 18.1 14 17"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
           />
         </G>
       )}

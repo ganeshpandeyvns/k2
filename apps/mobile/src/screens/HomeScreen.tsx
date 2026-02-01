@@ -24,6 +24,7 @@ import { DepositIcon, WithdrawIcon, SwapIcon, SendIcon, BellIcon } from '../comp
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore } from '../store/portfolioStore';
+import { useTheme } from '../hooks/useTheme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 import { MiniChart, generateChartData } from '../components/MiniChart';
@@ -59,6 +60,9 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get dynamic theme colors
+  const theme = useTheme();
 
   // Get cash balance from funding store
   const { cashBalance } = useFundingStore();
@@ -146,14 +150,14 @@ export function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background.primary }]}>
       {/* Background Gradient - Rich multi-layer effect */}
       <LinearGradient
         colors={[
-          MeruTheme.colors.accent.primary + '18',
-          MeruTheme.colors.accent.secondary + '08',
-          MeruTheme.colors.background.primary,
-          MeruTheme.colors.background.primary,
+          theme.colors.accent.primary + '18',
+          theme.colors.accent.secondary + '08',
+          theme.colors.background.primary,
+          theme.colors.background.primary,
         ]}
         locations={[0, 0.15, 0.4, 1]}
         style={StyleSheet.absoluteFill}
@@ -167,7 +171,7 @@ export function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={MeruTheme.colors.accent.primary}
+            tintColor={theme.colors.accent.primary}
           />
         }
       >
@@ -182,13 +186,13 @@ export function HomeScreen() {
           ]}
         >
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{DemoUser.name}</Text>
+            <Text style={[styles.greeting, { color: theme.colors.text.secondary }]}>{getGreeting()},</Text>
+            <Text style={[styles.userName, { color: theme.colors.text.primary }]}>{DemoUser.name}</Text>
           </View>
           <View style={styles.headerRight}>
-            <Pressable style={styles.notificationButton}>
-              <View style={styles.notificationDot} />
-              <BellIcon size={22} color={MeruTheme.colors.text.primary} />
+            <Pressable style={[styles.notificationButton, { backgroundColor: theme.colors.background.secondary }]}>
+              <View style={[styles.notificationDot, { backgroundColor: theme.colors.accent.primary }]} />
+              <BellIcon size={22} color={theme.colors.text.primary} />
             </Pressable>
           </View>
         </Animated.View>
@@ -228,14 +232,14 @@ export function HomeScreen() {
             >
               <LinearGradient
                 colors={[
-                  MeruTheme.colors.background.tertiary,
-                  MeruTheme.colors.background.secondary,
+                  theme.colors.background.tertiary,
+                  theme.colors.background.secondary,
                 ]}
-                style={styles.quickActionGradient}
+                style={[styles.quickActionGradient, { borderColor: theme.colors.border.light }]}
               >
-                <action.IconComponent size={26} color={MeruTheme.colors.accent.primary} />
+                <action.IconComponent size={26} color={theme.colors.accent.primary} />
               </LinearGradient>
-              <Text style={styles.quickActionLabel}>{action.label}</Text>
+              <Text style={[styles.quickActionLabel, { color: theme.colors.text.secondary }]}>{action.label}</Text>
             </Pressable>
           ))}
         </Animated.View>
@@ -251,9 +255,9 @@ export function HomeScreen() {
           ]}
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Assets</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Your Assets</Text>
             <Pressable onPress={() => navigation.navigate('Portfolio' as never)}>
-              <Text style={styles.seeAllButton}>See All</Text>
+              <Text style={[styles.seeAllButton, { color: theme.colors.accent.primary }]}>See All</Text>
             </Pressable>
           </View>
 
@@ -263,7 +267,8 @@ export function HomeScreen() {
                 key={asset.id}
                 style={({ pressed }) => [
                   styles.assetCard,
-                  pressed && styles.assetCardPressed,
+                  { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+                  pressed && [styles.assetCardPressed, { backgroundColor: theme.colors.background.tertiary }],
                 ]}
                 onPress={() =>
                   navigation.navigate('InstrumentDetail' as never, {
@@ -283,8 +288,8 @@ export function HomeScreen() {
                     </Text>
                   </LinearGradient>
                   <View style={styles.assetInfo}>
-                    <Text style={styles.assetName}>{asset.name}</Text>
-                    <Text style={styles.assetHoldings}>
+                    <Text style={[styles.assetName, { color: theme.colors.text.primary }]}>{asset.name}</Text>
+                    <Text style={[styles.assetHoldings, { color: theme.colors.text.tertiary }]}>
                       {formatCryptoQuantity(asset.holdings, asset.symbol)} {asset.symbol}
                     </Text>
                   </View>
@@ -301,15 +306,15 @@ export function HomeScreen() {
                 </View>
 
                 <View style={styles.assetRight}>
-                  <Text style={styles.assetValue}>{formatCurrency(asset.value)}</Text>
+                  <Text style={[styles.assetValue, { color: theme.colors.text.primary }]}>{formatCurrency(asset.value)}</Text>
                   <Text
                     style={[
                       styles.assetChange,
                       {
                         color:
                           asset.change24h >= 0
-                            ? MeruTheme.colors.success.primary
-                            : MeruTheme.colors.error.primary,
+                            ? theme.colors.success.primary
+                            : theme.colors.error.primary,
                       },
                     ]}
                   >
@@ -332,9 +337,9 @@ export function HomeScreen() {
           ]}
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Market Movers</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Market Movers</Text>
             <Pressable onPress={() => navigation.navigate('Markets' as never)}>
-              <Text style={styles.seeAllButton}>See All</Text>
+              <Text style={[styles.seeAllButton, { color: theme.colors.accent.primary }]}>See All</Text>
             </Pressable>
           </View>
 
@@ -353,7 +358,8 @@ export function HomeScreen() {
                 key={token.symbol}
                 style={({ pressed }) => [
                   styles.moverCard,
-                  pressed && styles.moverCardPressed,
+                  { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+                  pressed && [styles.moverCardPressed, { backgroundColor: theme.colors.background.tertiary }],
                 ]}
               >
                 <LinearGradient
@@ -366,8 +372,8 @@ export function HomeScreen() {
                     {token.symbol[0]}
                   </Text>
                 </LinearGradient>
-                <Text style={styles.moverSymbol}>{token.symbol}</Text>
-                <Text style={styles.moverPrice}>
+                <Text style={[styles.moverSymbol, { color: theme.colors.text.primary }]}>{token.symbol}</Text>
+                <Text style={[styles.moverPrice, { color: theme.colors.text.secondary }]}>
                   ${token.price < 0.01 ? token.price.toFixed(8) : token.price.toFixed(2)}
                 </Text>
                 <View
@@ -376,8 +382,8 @@ export function HomeScreen() {
                     {
                       backgroundColor:
                         token.change >= 0
-                          ? MeruTheme.colors.success.glow
-                          : MeruTheme.colors.error.glow,
+                          ? theme.colors.success.glow
+                          : theme.colors.error.glow,
                     },
                   ]}
                 >
@@ -387,8 +393,8 @@ export function HomeScreen() {
                       {
                         color:
                           token.change >= 0
-                            ? MeruTheme.colors.success.primary
-                            : MeruTheme.colors.error.primary,
+                            ? theme.colors.success.primary
+                            : theme.colors.error.primary,
                       },
                     ]}
                   >
