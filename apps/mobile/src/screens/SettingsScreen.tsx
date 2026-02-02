@@ -69,9 +69,9 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Exchange Connections */}
+        {/* Exchange & Brokerage Connections */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Connected Exchanges</Text>
+          <Text style={styles.sectionTitle}>Connected Exchanges & Brokerages</Text>
           <View style={styles.card}>
             <View style={styles.row}>
               <View>
@@ -92,10 +92,19 @@ export function SettingsScreen() {
                 <Text style={styles.statusText}>Connected</Text>
               </View>
             </View>
+            <View style={styles.separator} />
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.rowLabel}>DriveWealth</Text>
+                <Text style={styles.rowSubtext}>US stock trading</Text>
+              </View>
+              <View style={[styles.statusBadge, styles.connectedBadge]}>
+                <Text style={styles.statusText}>Connected</Text>
+              </View>
+            </View>
           </View>
           <Text style={styles.helperText}>
-            Your assets remain at each exchange. K2 never holds your funds.
-          </Text>
+            Your assets remain at each exchange/brokerage. Meru never holds your funds.</Text>
         </View>
 
         {/* Preferences */}
