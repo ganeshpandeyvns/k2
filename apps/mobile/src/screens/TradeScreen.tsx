@@ -77,7 +77,7 @@ export function TradeScreen() {
   const [eventSide, setEventSide] = useState<EventSide>('yes');
   const [extendedHours, setExtendedHours] = useState(false);
 
-  const { executeBuy, executeSell, getHolding } = usePortfolioStore();
+  const { executeBuy, executeSell, getHolding, queueOrder } = usePortfolioStore();
   const { cashBalance, updateCashBalance } = useFundingStore();
 
   // Detect asset type
@@ -137,7 +137,7 @@ export function TradeScreen() {
   });
 
   const submitOrder = useMutation({
-    mutationFn: async (order: Parameters<typeof api.createOrder>[0] & { isStock?: boolean; stockOrder?: any }) => {
+    mutationFn: async (order: Parameters<typeof api.createOrder>[0] & { isStock?: boolean; stockOrder?: any; isQueued?: boolean; queuedExecutionDate?: string }) => {
       try {
         // Use stock-specific order endpoint for stocks
         if (order.isStock && order.stockOrder) {
@@ -145,17 +145,19 @@ export function TradeScreen() {
         }
         return await api.createOrder(order);
       } catch {
-        // Demo mode: simulate successful order
+        // Demo mode: simulate order (queued or filled)
         await new Promise((resolve) => setTimeout(resolve, 1000));
         return {
           orderId: `demo_${Date.now()}`,
-          status: 'filled',
+          status: order.isQueued ? 'pending' : 'filled',
           instrument: order.instrument,
           side: order.side,
           quantity: order.quantity,
           price: order.price || quote?.lastPrice || '0',
           filledQuantity: parseFloat(order.quantity),
           averagePrice: parseFloat(order.price || quote?.lastPrice || '0'),
+          isQueued: order.isQueued,
+          queuedExecutionDate: order.queuedExecutionDate,
         };
       }
     },
@@ -164,10 +166,37 @@ export function TradeScreen() {
       const filledPrice = data.averagePrice || parseFloat(data.price || currentPrice);
       const qty = data.filledQuantity || parseFloat(data.quantity);
       const totalCost = qty * filledPrice;
+      const orderSide = data.side || side;
 
-      // Update portfolio and cash balance based on order side
+      // Check if this is a queued order (stock market closed)
+      if (data.isQueued) {
+        // Queue the order - don't update holdings or cash yet
+        queueOrder(
+          orderSide,
+          baseAsset,
+          qty,
+          filledPrice,
+          data.queuedExecutionDate || '',
+          instrument?.displayName
+        );
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        const quantityDisplay = qty.toFixed(4);
+        const nextOpenDate = data.queuedExecutionDate
+          ? new Date(data.queuedExecutionDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+          : 'next market day';
+
+        Alert.alert(
+          'Order Queued',
+          `Your ${orderSide} order for ${quantityDisplay} shares of ${baseAsset} has been queued.\n\nEstimated total: ${formatCurrency(totalCost.toString())}\n\nWill execute when market opens on ${nextOpenDate} at 9:30 AM ET.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
+      // Regular order execution - update portfolio and cash balance
       if (!isEvent) {
-        const orderSide = data.side || side;
         if (orderSide === 'buy') {
           executeBuy(baseAsset, qty, filledPrice, instrument?.displayName);
           // Deduct USD from cash balance
@@ -278,7 +307,14 @@ export function TradeScreen() {
       }
     }
 
-    const executeOrder = () => {
+    // For stocks when market is closed, determine if this is a queued order
+    const isMarketClosed = isStock && marketStatus && marketStatus.session === 'closed';
+    const nextOpenDate = marketStatus?.nextOpen?.toISOString() || '';
+    const nextOpenFormatted = marketStatus?.nextOpen
+      ? marketStatus.nextOpen.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      : 'next market day';
+
+    const executeOrder = (queued: boolean = false) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       // For stocks, use the stock-specific order format
@@ -289,6 +325,8 @@ export function TradeScreen() {
           type: orderType,
           quantity: orderQuantity.toFixed(8),
           isStock: true,
+          isQueued: queued,
+          queuedExecutionDate: queued ? nextOpenDate : undefined,
           stockOrder: {
             symbol: instrumentId,
             side,
@@ -312,19 +350,13 @@ export function TradeScreen() {
       }
     };
 
-    // For stocks when market is closed, show queue confirmation
-    const isMarketClosed = isStock && marketStatus && marketStatus.session === 'closed';
-    const nextOpenFormatted = marketStatus?.nextOpen
-      ? marketStatus.nextOpen.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-      : 'next market day';
-
     if (isMarketClosed) {
       Alert.alert(
         'Market Closed',
         `The market is currently closed. Your order will be queued and executed when the market opens on ${nextOpenFormatted} at 9:30 AM ET.\n\n${side === 'buy' ? 'Buy' : 'Sell'} ${inputMode === 'dollars' ? formatCurrency(dollarAmount) : `${orderQuantity.toFixed(4)} shares`} of ${baseAsset}`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Queue Order', onPress: executeOrder },
+          { text: 'Queue Order', onPress: () => executeOrder(true) },
         ]
       );
       return;
@@ -337,7 +369,7 @@ export function TradeScreen() {
         `You are about to ${side} ${orderQuantity.toFixed(isStock ? 4 : 6)} ${isStock ? `shares of ${baseAsset}` : baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Confirm', style: 'destructive', onPress: executeOrder },
+          { text: 'Confirm', style: 'destructive', onPress: () => executeOrder(false) },
         ]
       );
       return;
@@ -350,13 +382,13 @@ export function TradeScreen() {
         `This is a market order. The final price may differ slightly from ${formatCurrency(currentPrice)} due to market conditions.\n\nEstimated: ${orderQuantity.toFixed(6)} ${baseAsset}`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Place Order', onPress: executeOrder },
+          { text: 'Place Order', onPress: () => executeOrder(false) },
         ]
       );
       return;
     }
 
-    executeOrder();
+    executeOrder(false);
   }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, isStock, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder, extendedHours, canTradeExtendedHours, marketStatus]);
 
   return (

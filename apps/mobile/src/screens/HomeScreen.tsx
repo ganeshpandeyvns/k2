@@ -27,6 +27,7 @@ import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore } from '../store/portfolioStore';
 import { useUserProfileStore } from '../store/userProfileStore';
 import { useTheme } from '../hooks/useTheme';
+import { DEMO_STOCK_QUOTES, DEMO_STOCKS } from '../utils/mockStockData';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 import { MiniChart, generateChartData } from '../components/MiniChart';
@@ -58,6 +59,27 @@ const EVENT_PRICES: Record<string, { probability: number; change24h: number }> =
 // Check if symbol is an event contract
 const isEventContract = (symbol: string): boolean => {
   return symbol in EVENT_PRICES || symbol.includes('-') && !symbol.endsWith('-USD');
+};
+
+// Check if symbol is a stock
+const isStock = (symbol: string): boolean => {
+  return DEMO_STOCKS.some((s) => s.symbol === symbol);
+};
+
+// Get price info for any asset type (crypto, stock, or event)
+const getAssetPriceInfo = (symbol: string): { price: number; change24h: number } => {
+  // Check stocks first
+  const stockQuote = DEMO_STOCK_QUOTES[symbol];
+  if (stockQuote) {
+    return { price: stockQuote.price, change24h: stockQuote.changePercent };
+  }
+  // Then crypto
+  const cryptoPrice = DEMO_PRICES[symbol];
+  if (cryptoPrice) {
+    return cryptoPrice;
+  }
+  // Default fallback
+  return { price: 0, change24h: 0 };
 };
 
 const CHANGE_24H = 3247.89;
@@ -141,9 +163,9 @@ export function HomeScreen() {
       const probability = eventInfo?.probability || 0.5;
       return total + h.quantity * probability;
     }
-    const priceInfo = DEMO_PRICES[h.symbol];
-    const price = priceInfo?.price || 0;
-    return total + h.quantity * price;
+    // Use unified price lookup for crypto and stocks
+    const priceInfo = getAssetPriceInfo(h.symbol);
+    return total + h.quantity * priceInfo.price;
   }, 0);
 
   // Calculate total portfolio value including cash deposits
@@ -168,7 +190,8 @@ export function HomeScreen() {
       };
     }
 
-    const priceInfo = DEMO_PRICES[h.symbol] || { price: 0, change24h: 0 };
+    // Use unified price lookup for crypto and stocks
+    const priceInfo = getAssetPriceInfo(h.symbol);
     return {
       id: h.symbol,
       name: h.name,
@@ -179,6 +202,7 @@ export function HomeScreen() {
       value: h.quantity * priceInfo.price,
       color: h.color,
       isEvent: false,
+      isStock: isStock(h.symbol),
     };
   });
 

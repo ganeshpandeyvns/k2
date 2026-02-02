@@ -30,6 +30,9 @@ export interface TradeTransaction {
   fromAddress?: string; // For receives
   timestamp: string;
   status: 'pending' | 'completed' | 'failed';
+  // Queued order fields
+  isQueued?: boolean; // True if order is queued for market open
+  queuedExecutionDate?: string; // When the order will execute
 }
 
 interface PortfolioState {
@@ -48,6 +51,16 @@ interface PortfolioState {
   executeSwap: (fromSymbol: string, fromQty: number, toSymbol: string, toQty: number, toName?: string, toColor?: string) => TradeTransaction;
   executeSend: (symbol: string, quantity: number, toAddress: string, price: number) => TradeTransaction | null;
   executeReceive: (symbol: string, quantity: number, fromAddress: string, price: number, name?: string, color?: string) => TradeTransaction;
+
+  // Queued order (for stocks when market is closed)
+  queueOrder: (
+    type: 'buy' | 'sell',
+    symbol: string,
+    quantity: number,
+    estimatedPrice: number,
+    executionDate: string,
+    name?: string
+  ) => TradeTransaction;
 
   // Computed
   getTotalValue: (prices: Record<string, number>) => number;
@@ -338,6 +351,28 @@ export const usePortfolioStore = create<PortfolioState>()(
           fromAddress,
           timestamp: new Date().toISOString(),
           status: 'completed',
+        };
+
+        set((state) => ({
+          transactions: [tx, ...state.transactions],
+        }));
+
+        return tx;
+      },
+
+      // Queue order for stocks when market is closed (doesn't update holdings until executed)
+      queueOrder: (type, symbol, quantity, estimatedPrice, executionDate, name) => {
+        const tx: TradeTransaction = {
+          id: generateTxId(),
+          type,
+          asset: symbol,
+          quantity,
+          price: estimatedPrice,
+          total: quantity * estimatedPrice,
+          timestamp: new Date().toISOString(),
+          status: 'pending',
+          isQueued: true,
+          queuedExecutionDate: executionDate,
         };
 
         set((state) => ({
