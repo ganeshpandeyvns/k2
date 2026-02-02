@@ -27,7 +27,6 @@ import { useUserProfileStore, DEMO_PROFILES } from '../store/userProfileStore';
 import { useKYCStore } from '../store/kycStore';
 import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore } from '../store/portfolioStore';
-import { useThemeStore } from '../store/themeStore';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -89,7 +88,7 @@ const FaceIdIcon = ({ size = 48, color = '#f0b429' }: { size?: number; color?: s
 );
 
 // Floating Particle Component
-const FloatingParticle = ({ delay, duration, startX, size, accentColor = '#f0b429' }: { delay: number; duration: number; startX: number; size: number; accentColor?: string }) => {
+const FloatingParticle = ({ delay, duration, startX, size }: { delay: number; duration: number; startX: number; size: number }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT + 50)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -141,7 +140,6 @@ const FloatingParticle = ({ delay, duration, startX, size, accentColor = '#f0b42
           borderRadius: size / 2,
           transform: [{ translateY }],
           opacity,
-          backgroundColor: accentColor,
         },
       ]}
     />
@@ -152,9 +150,6 @@ export function WelcomeScreen() {
   const navigation = useNavigation<WelcomeNavigationProp>();
   const { isAvailable, biometricType, authenticate, getBiometricLabel } = useBiometrics();
   const login = useAuthStore((state) => state.login);
-
-  // Theme store
-  const theme = useThemeStore((state) => state.getCurrentTheme());
 
   // Profile store
   const { switchProfile } = useUserProfileStore();
@@ -291,48 +286,21 @@ export function WelcomeScreen() {
     size: 3 + Math.random() * 4,
   }));
 
-  // Derive colors from theme
-  const accentColor = theme.colors.accent.primary;
-  const accentSecondary = theme.colors.accent.secondary;
-  const bgPrimary = theme.colors.background.primary;
-  const bgSecondary = theme.colors.background.secondary;
-  const bgTertiary = theme.colors.background.tertiary;
-  const textPrimary = theme.colors.text.primary;
-  const textSecondary = theme.colors.text.secondary;
-  const textMuted = theme.colors.text.muted;
-  const successColor = theme.colors.success.primary;
-  const borderSubtle = theme.colors.border.subtle;
-  const borderLight = theme.colors.border.light;
-  const accentGlow = theme.colors.accent.glow;
-
-  // Build dynamic gradient colors based on theme
-  const bgGradientColors = theme.isDark
-    ? [bgPrimary, bgSecondary, bgTertiary, bgSecondary, bgPrimary]
-    : [bgPrimary, bgSecondary, bgPrimary, bgSecondary, bgPrimary];
-
-  const glowGradientColors = [
-    'transparent',
-    accentGlow.replace('0.15', '0.08'),
-    accentGlow,
-    accentGlow.replace('0.15', '0.08'),
-    'transparent',
-  ];
-
   return (
-    <View style={[styles.container, { backgroundColor: bgPrimary }]}>
-      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
 
       {/* Deep Background */}
       <LinearGradient
-        colors={bgGradientColors as [string, string, ...string[]]}
+        colors={['#030305', '#050507', '#0a0a0f', '#050507', '#030305']}
         locations={[0, 0.2, 0.5, 0.8, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Animated Accent Glow */}
+      {/* Animated Gold Glow */}
       <Animated.View style={[styles.glowContainer, { opacity: glowPulse }]}>
         <LinearGradient
-          colors={glowGradientColors as [string, string, ...string[]]}
+          colors={['transparent', 'rgba(240, 180, 41, 0.08)', 'rgba(240, 180, 41, 0.15)', 'rgba(240, 180, 41, 0.08)', 'transparent']}
           locations={[0, 0.3, 0.5, 0.7, 1]}
           style={styles.glow}
           start={{ x: 0.5, y: 0 }}
@@ -343,14 +311,14 @@ export function WelcomeScreen() {
       {/* Secondary glow - top accent */}
       <View style={styles.topGlow}>
         <LinearGradient
-          colors={[accentGlow.replace('0.15', '0.1'), 'transparent']}
+          colors={['rgba(240, 180, 41, 0.1)', 'transparent']}
           style={styles.topGlowGradient}
         />
       </View>
 
       {/* Floating Particles */}
       {particles.map((p) => (
-        <FloatingParticle key={p.id} {...p} accentColor={accentColor} />
+        <FloatingParticle key={p.id} {...p} />
       ))}
 
       <SafeAreaView style={styles.content}>
@@ -370,14 +338,12 @@ export function WelcomeScreen() {
           </View>
 
           {/* Brand Name */}
-          <Text style={[styles.brandName, { color: accentColor, textShadowColor: `${accentColor}80` }]}>
-            MERU
-          </Text>
+          <Text style={styles.brandName}>MERU</Text>
 
           {/* Decorative line */}
           <View style={styles.decorativeLine}>
             <LinearGradient
-              colors={['transparent', accentColor, 'transparent'] as [string, string, string]}
+              colors={['transparent', '#f0b429', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.lineGradient}
@@ -385,7 +351,7 @@ export function WelcomeScreen() {
           </View>
 
           {/* Tagline */}
-          <Text style={[styles.tagline, { color: textSecondary }]}>Powered by tZero</Text>
+          <Text style={styles.tagline}>Powered by tZero</Text>
         </Animated.View>
 
         {/* Action Section */}
@@ -402,33 +368,22 @@ export function WelcomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.faceIdButton,
-              {
-                backgroundColor: theme.isDark
-                  ? accentGlow.replace('0.15', '0.08')
-                  : `${accentColor}15`,
-                borderColor: theme.isDark
-                  ? accentGlow.replace('0.15', '0.25')
-                  : accentColor,
-                borderWidth: theme.isDark ? 1 : 2,
-              },
-              pressed && {
-                backgroundColor: theme.isDark ? accentGlow : `${accentColor}25`,
-              },
+              pressed && styles.faceIdButtonPressed,
             ]}
             onPress={handleBiometricAuth}
           >
-            <View style={[styles.faceIdGlow, { backgroundColor: theme.isDark ? accentGlow.replace('0.15', '0.1') : 'transparent' }]} />
-            <FaceIdIcon size={52} color={accentColor} />
-            <Text style={[styles.faceIdText, { color: textPrimary }]}>
+            <View style={styles.faceIdGlow} />
+            <FaceIdIcon size={52} color="#f0b429" />
+            <Text style={styles.faceIdText}>
               {isAvailable ? `Continue with ${getBiometricLabel()}` : 'Continue with Face ID'}
             </Text>
           </Pressable>
 
           {/* Divider */}
           <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: theme.isDark ? borderLight : `${textPrimary}20` }]} />
-            <Text style={[styles.dividerText, { color: theme.isDark ? textMuted : textSecondary }]}>demo profiles</Text>
-            <View style={[styles.dividerLine, { backgroundColor: theme.isDark ? borderLight : `${textPrimary}20` }]} />
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>demo profiles</Text>
+            <View style={styles.dividerLine} />
           </View>
 
           {/* Profile Selection Cards */}
@@ -437,31 +392,19 @@ export function WelcomeScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.profileCard,
-                {
-                  backgroundColor: theme.isDark
-                    ? accentGlow.replace('0.15', '0.08')
-                    : `${accentColor}12`,
-                  borderColor: theme.isDark
-                    ? accentGlow.replace('0.15', '0.25')
-                    : accentColor,
-                  borderWidth: theme.isDark ? 1 : 2,
-                },
-                pressed && {
-                  backgroundColor: theme.isDark ? accentGlow : `${accentColor}20`,
-                  transform: [{ scale: 0.98 }],
-                },
+                pressed && styles.profileCardPressed,
               ]}
               onPress={() => handleSelectProfile('alex')}
             >
-              <View style={[styles.profileAvatar, { backgroundColor: accentColor }]}>
-                <Text style={[styles.profileAvatarText, { color: theme.colors.text.inverse }]}>A</Text>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileAvatarText}>A</Text>
               </View>
               <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: textPrimary }]}>Alan Swimmer</Text>
-                <Text style={[styles.profileStatus, { color: textSecondary }]}>Verified • $10K balance</Text>
+                <Text style={styles.profileName}>Alan Swimmer</Text>
+                <Text style={styles.profileStatus}>Verified • $10K balance</Text>
               </View>
-              <View style={[styles.profileBadge, { backgroundColor: theme.isDark ? theme.colors.success.glow : `${successColor}20` }]}>
-                <Text style={[styles.profileBadgeText, { color: successColor }]}>Full Access</Text>
+              <View style={styles.profileBadge}>
+                <Text style={styles.profileBadgeText}>Full Access</Text>
               </View>
             </Pressable>
 
@@ -469,31 +412,20 @@ export function WelcomeScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.profileCard,
-                {
-                  backgroundColor: theme.isDark
-                    ? borderSubtle
-                    : 'rgba(99, 102, 241, 0.08)',
-                  borderColor: theme.isDark
-                    ? borderLight
-                    : '#6366f1',
-                  borderWidth: theme.isDark ? 1 : 2,
-                },
-                pressed && {
-                  backgroundColor: theme.isDark ? borderLight : 'rgba(99, 102, 241, 0.15)',
-                  transform: [{ scale: 0.98 }],
-                },
+                styles.profileCardMike,
+                pressed && styles.profileCardPressed,
               ]}
               onPress={() => handleSelectProfile('mike')}
             >
-              <View style={[styles.profileAvatar, { backgroundColor: '#6366f1' }]}>
-                <Text style={[styles.profileAvatarText, { color: '#ffffff' }]}>M</Text>
+              <View style={[styles.profileAvatar, styles.profileAvatarMike]}>
+                <Text style={styles.profileAvatarText}>M</Text>
               </View>
               <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: textPrimary }]}>Mike Diedrichs</Text>
-                <Text style={[styles.profileStatus, { color: textSecondary }]}>New user • Onboarding</Text>
+                <Text style={styles.profileName}>Mike Diedrichs</Text>
+                <Text style={styles.profileStatus}>New user • Onboarding</Text>
               </View>
-              <View style={[styles.profileBadge, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
-                <Text style={[styles.profileBadgeText, { color: theme.isDark ? '#818cf8' : '#4f46e5' }]}>Demo Setup</Text>
+              <View style={[styles.profileBadge, styles.profileBadgeMike]}>
+                <Text style={[styles.profileBadgeText, styles.profileBadgeTextMike]}>Demo Setup</Text>
               </View>
             </Pressable>
           </View>
@@ -502,23 +434,11 @@ export function WelcomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.signInButton,
-              {
-                borderColor: accentColor,
-                borderWidth: theme.isDark ? 1.5 : 2,
-                backgroundColor: theme.isDark
-                  ? accentGlow.replace('0.15', '0.05')
-                  : `${accentColor}10`,
-              },
-              pressed && {
-                backgroundColor: theme.isDark
-                  ? accentGlow.replace('0.15', '0.1')
-                  : `${accentColor}20`,
-                transform: [{ scale: 0.98 }],
-              },
+              pressed && styles.signInButtonPressed,
             ]}
             onPress={handleSignIn}
           >
-            <Text style={[styles.signInButtonText, { color: accentColor }]}>Sign In with Email</Text>
+            <Text style={styles.signInButtonText}>Sign In with Email</Text>
           </Pressable>
         </Animated.View>
 
@@ -526,11 +446,11 @@ export function WelcomeScreen() {
         <View style={styles.footer}>
           <View style={styles.footerLinks}>
             <Pressable>
-              <Text style={[styles.footerLink, { color: textMuted }]}>Terms of Service</Text>
+              <Text style={styles.footerLink}>Terms of Service</Text>
             </Pressable>
-            <Text style={[styles.footerDot, { color: borderLight }]}>•</Text>
+            <Text style={styles.footerDot}>•</Text>
             <Pressable>
-              <Text style={[styles.footerLink, { color: textMuted }]}>Privacy Policy</Text>
+              <Text style={styles.footerLink}>Privacy Policy</Text>
             </Pressable>
           </View>
         </View>
@@ -602,7 +522,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 255, 255, 0.45)',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
