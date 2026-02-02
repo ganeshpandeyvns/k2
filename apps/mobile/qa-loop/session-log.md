@@ -137,6 +137,61 @@ These bugs were fixed before QA loop was set up:
 
 ---
 
+## Session 4 - 2026-02-02
+
+**Score Change**: -50 (1 HIGH bug × -50) + 25 (new pattern) + 10 (pattern caught bug) = -15
+**Running Score**: 605
+
+### Bugs Found
+| Severity | File | Line | Description | Pattern |
+|----------|------|------|-------------|---------|
+| HIGH | src/screens/PortfolioScreen.tsx | ~30 | DEMO_PRICES map missing stocks/events - showed $0.00 | P021 (NEW) |
+
+### Patterns Applied
+- P001 (Input validation): Applied to numeric inputs - passed
+- P007 (Price formatting): Applied to display screens - passed
+- P021 (Price map completeness): Applied to PortfolioScreen - **caught bug!**
+
+### Bugs Fixed
+1. **PortfolioScreen.tsx:~30** - DEMO_PRICES incomplete
+   - Root cause: DEMO_PRICES only had crypto prices, missing stocks (AAPL, NVDA, TSLA) and events (FED-RATE-MAR, BTC-100K-Q1)
+   - Symptoms: Portfolio showed $0.00 for all non-crypto assets
+   - Fix: Extended DEMO_PRICES to include all asset types:
+     - Added stocks: AAPL, MSFT, GOOGL, AMZN, META, NVDA, TSLA, JPM, BAC, V, MA, JNJ
+     - Added events: FED-RATE-MAR, BTC-100K-Q1, ETH-ETF-APR, AI-BREAKTHROUGH
+   - Pattern: P021 (new pattern created from this bug)
+
+### New Patterns Added
+- **P021**: "When I see price lookups using hardcoded price maps, check that ALL asset types (crypto, stocks, events, private) have prices in the map"
+  - Category: data-completeness
+  - Severity: HIGH
+  - Example: DEMO_PRICES only has crypto, stocks show $0.00 on Portfolio
+
+### Other Fixes This Session
+1. **Theme not applied to PortfolioScreen/SettingsScreen**
+   - Added useTheme() hook to both screens
+   - Applied theme colors to all UI elements
+
+2. **InviteCodeModal created**
+   - 6-digit code entry with auto-advance
+   - Accepts ANY 6-digit code for demo mode
+
+3. **New light themes added**
+   - Sunrise Gold: White bg with orange/coral accents
+   - Pearl Mint: White bg with mint green accents
+
+### Score Calculation
+- Bugs: HIGH(1) × -50 = -50
+- Pattern catches: P021 × 1 = +10
+- New patterns: 1 × +25 = +25
+- **Total**: -15
+
+### Tests
+- All 146 tests passing
+- No regressions introduced
+
+---
+
 ## Template for Future Sessions
 
 ```markdown

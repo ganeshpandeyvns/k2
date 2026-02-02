@@ -181,6 +181,15 @@
       "category": "compliance",
       "example": "User bypasses KYC by navigating directly to deposit screen",
       "stats": { "bugsFound": 0, "timesApplied": 0, "weight": 1.0, "lastUsed": null }
+    },
+    {
+      "id": "P021",
+      "trigger": "When I see price lookups using hardcoded price maps",
+      "check": "Check that ALL asset types (crypto, stocks, events, private) have prices in the map",
+      "severity": "HIGH",
+      "category": "data-completeness",
+      "example": "DEMO_PRICES only has crypto, stocks show $0.00 on Portfolio",
+      "stats": { "bugsFound": 1, "timesApplied": 1, "weight": 1.4, "lastUsed": "2026-02-02" }
     }
   ]
 }

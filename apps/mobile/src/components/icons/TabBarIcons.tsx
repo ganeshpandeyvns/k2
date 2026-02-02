@@ -518,3 +518,58 @@ export const CheckIcon: React.FC<IconProps> = ({
     />
   </Svg>
 );
+
+// Private Stocks Icon - Lock with chart (exclusive/private investment)
+export const PrivateIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          {/* Lock body */}
+          <Rect x="4" y="10" width="16" height="12" rx="2" fill={activeColor} />
+          {/* Lock shackle */}
+          <Path
+            d="M8 10V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V10"
+            stroke={activeColor}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+          {/* Star/diamond inside (exclusive) */}
+          <Path
+            d="M12 13L13 15.5L15.5 16L13 16.5L12 19L11 16.5L8.5 16L11 15.5L12 13Z"
+            fill={MeruTheme.colors.background.primary}
+          />
+        </G>
+      ) : (
+        <G>
+          {/* Lock body outline */}
+          <Rect
+            x="4" y="10" width="16" height="12" rx="2"
+            stroke={activeColor}
+            strokeWidth={1.5}
+          />
+          {/* Lock shackle */}
+          <Path
+            d="M8 10V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V10"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          {/* Star/diamond inside (exclusive) */}
+          <Path
+            d="M12 13L13 15.5L15.5 16L13 16.5L12 19L11 16.5L8.5 16L11 15.5L12 13Z"
+            stroke={activeColor}
+            strokeWidth={1}
+            fill="none"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};

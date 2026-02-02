@@ -71,70 +71,70 @@ export function SettingsScreen() {
 
         {/* Exchange & Brokerage Connections */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Connected Exchanges & Brokerages</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Connected Exchanges & Brokerages</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <View style={styles.row}>
               <View>
-                <Text style={styles.rowLabel}>Crypto.com</Text>
-                <Text style={styles.rowSubtext}>Spot crypto trading</Text>
+                <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Crypto.com</Text>
+                <Text style={[styles.rowSubtext, { color: theme.colors.text.tertiary }]}>Spot crypto trading</Text>
               </View>
-              <View style={[styles.statusBadge, styles.connectedBadge]}>
-                <Text style={styles.statusText}>Connected</Text>
+              <View style={[styles.statusBadge, { backgroundColor: theme.colors.success.glow }]}>
+                <Text style={[styles.statusText, { color: theme.colors.success.primary }]}>Connected</Text>
               </View>
             </View>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <View style={styles.row}>
               <View>
-                <Text style={styles.rowLabel}>Kalshi</Text>
-                <Text style={styles.rowSubtext}>Event contracts</Text>
+                <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Kalshi</Text>
+                <Text style={[styles.rowSubtext, { color: theme.colors.text.tertiary }]}>Event contracts</Text>
               </View>
-              <View style={[styles.statusBadge, styles.connectedBadge]}>
-                <Text style={styles.statusText}>Connected</Text>
+              <View style={[styles.statusBadge, { backgroundColor: theme.colors.success.glow }]}>
+                <Text style={[styles.statusText, { color: theme.colors.success.primary }]}>Connected</Text>
               </View>
             </View>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <View style={styles.row}>
               <View>
-                <Text style={styles.rowLabel}>DriveWealth</Text>
-                <Text style={styles.rowSubtext}>US stock trading</Text>
+                <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>DriveWealth</Text>
+                <Text style={[styles.rowSubtext, { color: theme.colors.text.tertiary }]}>US stock trading</Text>
               </View>
-              <View style={[styles.statusBadge, styles.connectedBadge]}>
-                <Text style={styles.statusText}>Connected</Text>
+              <View style={[styles.statusBadge, { backgroundColor: theme.colors.success.glow }]}>
+                <Text style={[styles.statusText, { color: theme.colors.success.primary }]}>Connected</Text>
               </View>
             </View>
           </View>
-          <Text style={styles.helperText}>
+          <Text style={[styles.helperText, { color: theme.colors.text.tertiary }]}>
             Your assets remain at each exchange/brokerage. Meru never holds your funds.</Text>
         </View>
 
         {/* Preferences */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Preferences</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Push Notifications</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Push Notifications</Text>
               <Switch
                 value={true}
-                trackColor={{ false: '#333333', true: '#00D4AA' }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: theme.colors.background.tertiary, true: theme.colors.accent.primary }}
+                thumbColor={theme.colors.text.inverse}
               />
             </View>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Order Confirmations</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Order Confirmations</Text>
               <Switch
                 value={true}
-                trackColor={{ false: '#333333', true: '#00D4AA' }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: theme.colors.background.tertiary, true: theme.colors.accent.primary }}
+                thumbColor={theme.colors.text.inverse}
               />
             </View>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Price Alerts</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Price Alerts</Text>
               <Switch
                 value={true}
-                trackColor={{ false: '#333333', true: '#00D4AA' }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: theme.colors.background.tertiary, true: theme.colors.accent.primary }}
+                thumbColor={theme.colors.text.inverse}
               />
             </View>
           </View>
@@ -197,85 +197,85 @@ export function SettingsScreen() {
 
         {/* Payment */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Payment</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <TouchableOpacity
               style={styles.row}
               onPress={() => navigation.navigate('PaymentMethods' as never)}
             >
               <View>
-                <Text style={styles.rowLabel}>Payment Methods</Text>
-                <Text style={styles.rowSubtext}>
+                <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Payment Methods</Text>
+                <Text style={[styles.rowSubtext, { color: theme.colors.text.tertiary }]}>
                   {paymentMethods.length > 0
                     ? `${paymentMethods.length} linked account${paymentMethods.length > 1 ? 's' : ''}`
                     : 'No accounts linked'}
                 </Text>
               </View>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <TouchableOpacity
               style={styles.row}
               onPress={() => navigation.navigate('KYC' as never)}
             >
               <View>
-                <Text style={styles.rowLabel}>Identity Verification</Text>
-                <Text style={styles.rowSubtext}>Required for deposits</Text>
+                <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Identity Verification</Text>
+                <Text style={[styles.rowSubtext, { color: theme.colors.text.tertiary }]}>Required for deposits</Text>
               </View>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Security */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Security</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Two-Factor Authentication</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Two-Factor Authentication</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Change Password</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Change Password</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text.tertiary }]}>Support</Text>
+          <View style={[styles.card, { backgroundColor: theme.colors.background.secondary }]}>
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Help Center</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Help Center</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Contact Support</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Contact Support</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Privacy Policy</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Privacy Policy</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: theme.colors.background.primary }]} />
             <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowLabel}>Terms of Service</Text>
-              <Text style={styles.rowArrow}>→</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text.primary }]}>Terms of Service</Text>
+              <Text style={[styles.rowArrow, { color: theme.colors.text.tertiary }]}>→</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: theme.colors.error.glow }]} onPress={handleLogout}>
+          <Text style={[styles.logoutText, { color: theme.colors.error.primary }]}>Log Out</Text>
         </TouchableOpacity>
 
         {/* Version */}
-        <Text style={styles.version}>K2 v0.1.0 (Development)</Text>
+        <Text style={[styles.version, { color: theme.colors.text.tertiary }]}>K2 v0.1.0 (Development)</Text>
       </ScrollView>
     </SafeAreaView>
   );

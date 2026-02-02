@@ -206,7 +206,7 @@ const arcticWhite: PremiumTheme = {
   id: 'arctic-white',
   name: 'Arctic White',
   description: 'Clean and minimal with icy blue accents',
-  preview: ['#f8fafc', '#3b82f6', '#1d4ed8'],
+  preview: ['#f8fafc', '#2563eb', '#1d4ed8'],
   isDark: false,
   colors: {
     background: {
@@ -217,33 +217,33 @@ const arcticWhite: PremiumTheme = {
       glass: 'rgba(248, 250, 252, 0.85)',
     },
     accent: {
-      primary: '#3b82f6',
+      primary: '#2563eb', // Darker blue for better contrast
       secondary: '#1d4ed8',
-      tertiary: '#60a5fa',
-      glow: 'rgba(59, 130, 246, 0.15)',
+      tertiary: '#3b82f6',
+      glow: 'rgba(37, 99, 235, 0.15)',
     },
     success: {
-      primary: '#10b981',
-      secondary: '#059669',
-      glow: 'rgba(16, 185, 129, 0.15)',
+      primary: '#059669', // Darker green
+      secondary: '#047857',
+      glow: 'rgba(5, 150, 105, 0.15)',
     },
     error: {
-      primary: '#ef4444',
-      secondary: '#dc2626',
-      glow: 'rgba(239, 68, 68, 0.15)',
+      primary: '#dc2626',
+      secondary: '#b91c1c',
+      glow: 'rgba(220, 38, 38, 0.15)',
     },
     text: {
       primary: '#0f172a',
-      secondary: 'rgba(15, 23, 42, 0.7)',
-      tertiary: 'rgba(15, 23, 42, 0.5)',
-      muted: 'rgba(15, 23, 42, 0.3)',
+      secondary: '#334155',
+      tertiary: '#64748b',
+      muted: '#94a3b8',
       inverse: '#ffffff',
     },
     border: {
-      subtle: 'rgba(15, 23, 42, 0.06)',
-      light: 'rgba(15, 23, 42, 0.1)',
-      medium: 'rgba(15, 23, 42, 0.15)',
-      accent: 'rgba(59, 130, 246, 0.3)',
+      subtle: 'rgba(15, 23, 42, 0.08)',
+      light: 'rgba(15, 23, 42, 0.12)',
+      medium: 'rgba(15, 23, 42, 0.2)',
+      accent: 'rgba(37, 99, 235, 0.4)',
     },
   },
 };
@@ -342,6 +342,100 @@ const emeraldNight: PremiumTheme = {
   },
 };
 
+// Sunrise Gold - Bright and Vibrant Light Theme
+const sunriseGold: PremiumTheme = {
+  id: 'sunrise-gold',
+  name: 'Sunrise Gold',
+  description: 'Bright and energetic with warm gold and coral accents',
+  preview: ['#ffffff', '#e67e00', '#d45500'],
+  isDark: false,
+  colors: {
+    background: {
+      primary: '#ffffff',
+      secondary: '#fffaf5',
+      tertiary: '#fff5eb',
+      elevated: '#ffffff',
+      glass: 'rgba(255, 255, 255, 0.95)',
+    },
+    accent: {
+      primary: '#e67e00', // Darker orange for better contrast
+      secondary: '#d45500',
+      tertiary: '#ff9500',
+      glow: 'rgba(230, 126, 0, 0.15)',
+    },
+    success: {
+      primary: '#059669', // Darker green for better contrast
+      secondary: '#047857',
+      glow: 'rgba(5, 150, 105, 0.15)',
+    },
+    error: {
+      primary: '#dc2626',
+      secondary: '#b91c1c',
+      glow: 'rgba(220, 38, 38, 0.15)',
+    },
+    text: {
+      primary: '#1a1a1a',
+      secondary: '#4a4a4a',
+      tertiary: '#6b6b6b',
+      muted: '#9a9a9a',
+      inverse: '#ffffff',
+    },
+    border: {
+      subtle: 'rgba(0, 0, 0, 0.08)',
+      light: 'rgba(0, 0, 0, 0.12)',
+      medium: 'rgba(0, 0, 0, 0.2)',
+      accent: 'rgba(230, 126, 0, 0.4)',
+    },
+  },
+};
+
+// Pearl Mint - Clean Light Theme with Mint Accents
+const pearlMint: PremiumTheme = {
+  id: 'pearl-mint',
+  name: 'Pearl Mint',
+  description: 'Crisp white with refreshing mint green accents',
+  preview: ['#ffffff', '#00a080', '#008060'],
+  isDark: false,
+  colors: {
+    background: {
+      primary: '#ffffff',
+      secondary: '#f8fffe',
+      tertiary: '#f0fcf9',
+      elevated: '#ffffff',
+      glass: 'rgba(255, 255, 255, 0.95)',
+    },
+    accent: {
+      primary: '#00a080', // Darker mint for better contrast
+      secondary: '#008060',
+      tertiary: '#00c49a',
+      glow: 'rgba(0, 160, 128, 0.15)',
+    },
+    success: {
+      primary: '#00a080',
+      secondary: '#008060',
+      glow: 'rgba(0, 160, 128, 0.15)',
+    },
+    error: {
+      primary: '#dc2626',
+      secondary: '#b91c1c',
+      glow: 'rgba(220, 38, 38, 0.15)',
+    },
+    text: {
+      primary: '#1a2e35',
+      secondary: '#3d5a66',
+      tertiary: '#5d7a86',
+      muted: '#8da0a8',
+      inverse: '#ffffff',
+    },
+    border: {
+      subtle: 'rgba(0, 80, 64, 0.08)',
+      light: 'rgba(0, 80, 64, 0.12)',
+      medium: 'rgba(0, 80, 64, 0.2)',
+      accent: 'rgba(0, 160, 128, 0.4)',
+    },
+  },
+};
+
 export const PREMIUM_THEMES: PremiumTheme[] = [
   obsidianGold,
   midnightPurple,
@@ -349,6 +443,8 @@ export const PREMIUM_THEMES: PremiumTheme[] = [
   roseGold,
   emeraldNight,
   arcticWhite,
+  sunriseGold,
+  pearlMint,
 ];
 
 // ============================================================================

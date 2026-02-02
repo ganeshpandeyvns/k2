@@ -26,14 +26,36 @@ import {
   SearchIcon,
   FilterIcon,
   StocksIcon,
+  PrivateIcon,
 } from '../components/icons/TabBarIcons';
 import { useTheme } from '../hooks/useTheme';
 import { DEMO_STOCKS, DEMO_STOCK_QUOTES, formatMarketCap } from '../utils/mockStockData';
 import { getMarketStatus, getSessionIcon } from '../utils/marketHours';
+import {
+  PRE_IPO_COMPANIES,
+  STARTUP_COMPANIES,
+  ATS_TOKENS,
+  PRIVATE_LISTINGS,
+  formatValuation,
+  getRiskColor,
+  getSectorIcon,
+  getATSPlatformIcon,
+  getTokenTypeLabel,
+  getDealTypeLabel,
+  getDealStatusColor,
+  getDaysUntilClose,
+  formatVolume,
+  PrivateStockInstrument,
+  ATSToken,
+  PrivateListing,
+} from '../utils/mockPrivateStockData';
+import { usePrivateAccessStore, getUnlockedCount, getTotalListingsCount } from '../store/privateAccessStore';
+import { InviteCodeModal } from '../components/InviteCodeModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type TabType = 'crypto' | 'stocks' | 'events' | 'trending';
+type TabType = 'crypto' | 'stocks' | 'events' | 'private' | 'trending';
+type PrivateSubTab = 'pre-ipo' | 'startups' | 'secondary-ats' | 'private-listing';
 
 // Demo market data with more details
 const CRYPTO_MARKETS = [
@@ -101,8 +123,10 @@ export function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('crypto');
+  const [privateSubTab, setPrivateSubTab] = useState<PrivateSubTab>('pre-ipo');
   const [searchQuery, setSearchQuery] = useState('');
   const [chartData, setChartData] = useState<Record<string, number[]>>({});
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Get dynamic theme colors
   const theme = useTheme();
@@ -139,6 +163,9 @@ export function MarketsScreen() {
   // Market status for stocks
   const marketStatus = getMarketStatus();
 
+  // Private access store for invite codes
+  const { unlockedListingIds, getUnlockedListings, getLockedListings } = usePrivateAccessStore();
+
   const getMarkets = () => {
     switch (activeTab) {
       case 'crypto':
@@ -147,6 +174,12 @@ export function MarketsScreen() {
         return STOCK_MARKETS;
       case 'events':
         return EVENT_MARKETS;
+      case 'private':
+        if (privateSubTab === 'pre-ipo') return PRE_IPO_COMPANIES;
+        if (privateSubTab === 'startups') return STARTUP_COMPANIES;
+        if (privateSubTab === 'secondary-ats') return ATS_TOKENS;
+        if (privateSubTab === 'private-listing') return PRIVATE_LISTINGS;
+        return PRE_IPO_COMPANIES;
       case 'trending':
         return TRENDING;
       default:
@@ -163,9 +196,331 @@ export function MarketsScreen() {
     );
   });
 
+  // Render private stock item (different layout)
+  const renderPrivateStockItem = ({ item, index }: { item: PrivateStockInstrument; index: number }) => {
+    const isStartup = item.category === 'startup';
+    const priceChange = item.priceChange30d;
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: Animated.multiply(
+                slideAnim,
+                new Animated.Value(1 + index * 0.1)
+              ),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.privateCard,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
+          ]}
+          onPress={() =>
+            navigation.navigate('PrivateStockDetail' as never, {
+              symbol: item.symbol,
+            } as never)
+          }
+        >
+          {/* Top Row: Icon, Name, Valuation */}
+          <View style={styles.privateTopRow}>
+            <View style={styles.privateLeft}>
+              <View style={[styles.privateIcon, { backgroundColor: theme.colors.accent.glow }]}>
+                <Text style={[styles.privateIconText, { color: theme.colors.accent.primary }]}>
+                  {getSectorIcon(item.sector)}
+                </Text>
+              </View>
+              <View style={styles.privateInfo}>
+                <View style={styles.symbolRow}>
+                  <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.name}</Text>
+                </View>
+                <View style={styles.privateBadges}>
+                  <View style={[styles.stageBadge, { backgroundColor: theme.colors.background.elevated }]}>
+                    <Text style={[styles.stageText, { color: theme.colors.text.secondary }]}>
+                      {item.fundingStage}
+                    </Text>
+                  </View>
+                  <View style={[styles.riskBadge, { backgroundColor: getRiskColor(item.riskLevel) + '20' }]}>
+                    <Text style={[styles.riskText, { color: getRiskColor(item.riskLevel) }]}>
+                      {item.riskLevel}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View style={styles.privateRight}>
+              <Text style={[styles.valuationLabel, { color: theme.colors.text.tertiary }]}>Valuation</Text>
+              <Text style={[styles.valuationValue, { color: theme.colors.text.primary }]}>
+                {formatValuation(item.latestValuation)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom Row: Share Price, Change, Min Investment / Round Info */}
+          <View style={styles.privateBottomRow}>
+            <View style={styles.privateMetric}>
+              <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Share Price</Text>
+              <Text style={[styles.metricValue, { color: theme.colors.text.primary }]}>
+                ${item.sharePrice.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.privateMetric}>
+              <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>30d Change</Text>
+              <Text style={[
+                styles.metricValue,
+                { color: priceChange >= 0 ? theme.colors.success.primary : theme.colors.error.primary }
+              ]}>
+                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(1)}%
+              </Text>
+            </View>
+            {isStartup && item.currentRound ? (
+              <View style={styles.privateMetric}>
+                <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Round Progress</Text>
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressBar, { backgroundColor: theme.colors.background.elevated }]}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          backgroundColor: theme.colors.accent.primary,
+                          width: `${Math.min(100, (item.currentRound.raised / item.currentRound.targetRaise) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.progressText, { color: theme.colors.accent.primary }]}>
+                    {Math.round((item.currentRound.raised / item.currentRound.targetRaise) * 100)}%
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.privateMetric}>
+                <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Min Investment</Text>
+                <Text style={[styles.metricValue, { color: theme.colors.text.primary }]}>
+                  ${item.minimumInvestment.toLocaleString()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Startup: Current Round Info */}
+          {isStartup && item.currentRound && (
+            <View style={[styles.roundInfo, { backgroundColor: theme.colors.accent.glow, borderColor: theme.colors.accent.primary }]}>
+              <Text style={[styles.roundText, { color: theme.colors.accent.primary }]}>
+                {item.currentRound.stage} · Raising {formatValuation(item.currentRound.targetRaise)} · Closes {item.currentRound.closingDate.split('-').slice(1).join('/')}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  // Render ATS Token item
+  const renderATSTokenItem = ({ item, index }: { item: ATSToken; index: number }) => {
+    const priceChangeColor = item.priceChange24h >= 0 ? theme.colors.success.primary : theme.colors.error.primary;
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: Animated.multiply(
+                slideAnim,
+                new Animated.Value(1 + index * 0.1)
+              ),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.atsCard,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
+          ]}
+          onPress={() =>
+            navigation.navigate('ATSTokenDetail' as never, {
+              symbol: item.symbol,
+            } as never)
+          }
+        >
+          <View style={styles.atsTopRow}>
+            <View style={styles.atsLeft}>
+              <Text style={styles.atsPlatformIcon}>{getATSPlatformIcon(item.platform)}</Text>
+              <View style={styles.atsInfo}>
+                <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+                <Text style={[styles.marketName, { color: theme.colors.text.tertiary }]}>{item.name}</Text>
+              </View>
+            </View>
+            <View style={styles.atsRight}>
+              <Text style={[styles.atsPrice, { color: theme.colors.text.primary }]}>
+                ${item.currentPrice.toFixed(2)}
+              </Text>
+              <View style={[styles.changeBadge, { backgroundColor: item.priceChange24h >= 0 ? theme.colors.success.glow : theme.colors.error.glow }]}>
+                <Text style={[styles.changeText, { color: priceChangeColor }]}>
+                  {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.atsBottomRow}>
+            <View style={styles.atsMetric}>
+              <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Volume 24h</Text>
+              <Text style={[styles.metricValue, { color: theme.colors.text.primary }]}>
+                {formatVolume(item.volume24h)}
+              </Text>
+            </View>
+            <View style={styles.atsMetric}>
+              <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Market Cap</Text>
+              <Text style={[styles.metricValue, { color: theme.colors.text.primary }]}>
+                {formatValuation(item.marketCap)}
+              </Text>
+            </View>
+            <View style={styles.atsMetric}>
+              <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Platform</Text>
+              <Text style={[styles.metricValue, { color: theme.colors.accent.primary }]}>
+                {item.platform}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  // Render Private Listing item (with locked/unlocked state)
+  const renderPrivateListingItem = ({ item, index }: { item: PrivateListing; index: number }) => {
+    const isUnlocked = unlockedListingIds.includes(item.id);
+    const daysLeft = getDaysUntilClose(item.closingDate);
+    const progressPercent = (item.amountRaised / item.targetRaise) * 100;
+    const statusColor = getDealStatusColor(item.status);
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: Animated.multiply(
+                slideAnim,
+                new Animated.Value(1 + index * 0.1)
+              ),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.listingCard,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
+            !isUnlocked && styles.listingCardLocked,
+          ]}
+          onPress={() => {
+            if (isUnlocked) {
+              navigation.navigate('PrivateListingDetail' as never, { id: item.id } as never);
+            } else {
+              // Show invite code modal
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setShowInviteModal(true);
+            }
+          }}
+        >
+          {/* Blur overlay for locked items */}
+          {!isUnlocked && (
+            <View style={styles.lockedOverlay}>
+              <Text style={styles.lockIcon}>🔐</Text>
+              <Text style={[styles.lockedTitle, { color: theme.colors.text.primary }]}>
+                INVITE ONLY
+              </Text>
+              <Text style={[styles.lockedSubtitle, { color: theme.colors.accent.primary }]}>
+                Tap to enter your 6-digit code
+              </Text>
+            </View>
+          )}
+
+          <View style={[!isUnlocked && styles.blurredContent]}>
+            <View style={styles.listingTopRow}>
+              <View style={styles.listingLeft}>
+                <View style={[styles.listingIcon, { backgroundColor: theme.colors.accent.glow }]}>
+                  <Text style={styles.listingIconText}>{getSectorIcon(item.sector)}</Text>
+                </View>
+                <View style={styles.listingInfo}>
+                  <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.name}</Text>
+                  <Text style={[styles.marketName, { color: theme.colors.text.tertiary }]}>
+                    {getDealTypeLabel(item.dealType)} · {item.targetCompany}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                  {item.status.replace('-', ' ').toUpperCase()}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.listingProgress}>
+              <View style={[styles.listingProgressBar, { backgroundColor: theme.colors.background.elevated }]}>
+                <View
+                  style={[
+                    styles.listingProgressFill,
+                    { backgroundColor: theme.colors.accent.primary, width: `${Math.min(progressPercent, 100)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.listingProgressText, { color: theme.colors.text.secondary }]}>
+                {formatCurrency(item.amountRaised)} / {formatCurrency(item.targetRaise)} ({progressPercent.toFixed(0)}%)
+              </Text>
+            </View>
+
+            <View style={styles.listingBottomRow}>
+              <View style={styles.listingMetric}>
+                <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Min</Text>
+                <Text style={[styles.metricValue, { color: theme.colors.accent.primary }]}>
+                  {formatCurrency(item.minimumInvestment)}
+                </Text>
+              </View>
+              <View style={styles.listingMetric}>
+                <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Investors</Text>
+                <Text style={[styles.metricValue, { color: theme.colors.text.primary }]}>
+                  {item.investorCount}
+                </Text>
+              </View>
+              <View style={styles.listingMetric}>
+                <Text style={[styles.metricLabel, { color: theme.colors.text.tertiary }]}>Closes</Text>
+                <Text style={[styles.metricValue, { color: daysLeft <= 5 ? theme.colors.error.primary : theme.colors.text.primary }]}>
+                  {daysLeft} days
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
   const renderMarketItem = ({ item, index }: { item: any; index: number }) => {
     const isEvent = activeTab === 'events';
     const isStock = activeTab === 'stocks';
+    const isPrivate = activeTab === 'private';
+
+    // Handle private subtabs with different renderers
+    if (isPrivate) {
+      if (privateSubTab === 'secondary-ats') {
+        return renderATSTokenItem({ item: item as ATSToken, index });
+      }
+      if (privateSubTab === 'private-listing') {
+        return renderPrivateListingItem({ item: item as PrivateListing, index });
+      }
+      return renderPrivateStockItem({ item: item as PrivateStockInstrument, index });
+    }
 
     // For stocks, navigate with the symbol directly
     const instrumentId = isStock ? item.symbol : item.id;
@@ -271,6 +626,7 @@ export function MarketsScreen() {
   const tabs: { id: TabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
     { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
     { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon },
+    { id: 'private', label: 'Private', IconComponent: PrivateIcon },
     { id: 'events', label: 'Events', IconComponent: EventsIcon },
     { id: 'trending', label: 'Trending', IconComponent: TrendingIcon },
   ];
@@ -370,6 +726,86 @@ export function MarketsScreen() {
         </View>
       </Animated.View>
 
+      {/* Private Subtabs */}
+      {activeTab === 'private' && (
+        <View style={styles.subTabsContainer}>
+          <View style={[styles.subTabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
+            <Pressable
+              style={[
+                styles.subTab,
+                privateSubTab === 'pre-ipo' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPrivateSubTab('pre-ipo');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                privateSubTab === 'pre-ipo' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Pre-IPO
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                privateSubTab === 'startups' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPrivateSubTab('startups');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                privateSubTab === 'startups' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Startups
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                privateSubTab === 'secondary-ats' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPrivateSubTab('secondary-ats');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                privateSubTab === 'secondary-ats' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                ATS
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                privateSubTab === 'private-listing' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPrivateSubTab('private-listing');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                privateSubTab === 'private-listing' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                {unlockedListingIds.length > 0 ? 'Private' : 'Private 🔒'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* Market Stats Bar */}
       <View style={[styles.statsBar, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
         {activeTab === 'stocks' ? (
@@ -391,6 +827,73 @@ export function MarketsScreen() {
               <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>+1.23%</Text>
             </View>
           </>
+        ) : activeTab === 'private' ? (
+          privateSubTab === 'secondary-ats' ? (
+            <>
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Tokens</Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                  {ATS_TOKENS.length}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Total MCap</Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>$472M</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Settlement</Text>
+                <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>T+0/T+1</Text>
+              </View>
+            </>
+          ) : privateSubTab === 'private-listing' ? (
+            <>
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Deals</Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                  {unlockedListingIds.length}/{PRIVATE_LISTINGS.length}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Access</Text>
+                <Text style={[styles.statValue, { color: unlockedListingIds.length > 0 ? theme.colors.success.primary : theme.colors.text.muted }]}>
+                  {unlockedListingIds.length > 0 ? 'Unlocked' : 'Invite Only'}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Total Raise</Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>$148M</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>
+                  {privateSubTab === 'pre-ipo' ? 'Companies' : 'Active Rounds'}
+                </Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                  {privateSubTab === 'pre-ipo' ? PRE_IPO_COMPANIES.length : STARTUP_COMPANIES.length}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Total Value</Text>
+                <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                  {privateSubTab === 'pre-ipo' ? '$598B' : '$17.5B'}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Avg Return</Text>
+                <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>
+                  {privateSubTab === 'pre-ipo' ? '+12.4%' : '+18.7%'}
+                </Text>
+              </View>
+            </>
+          )
         ) : (
           <>
             <View style={styles.statItem}>
@@ -416,7 +919,7 @@ export function MarketsScreen() {
       {/* Market List */}
       <FlatList
         data={filteredMarkets}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || item.symbol}
         renderItem={renderMarketItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -429,6 +932,16 @@ export function MarketsScreen() {
             <Text style={[styles.emptySubtitle, { color: theme.colors.text.tertiary }]}>Try a different search term</Text>
           </View>
         }
+      />
+
+      {/* Invite Code Modal */}
+      <InviteCodeModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={(count) => {
+          // Haptic feedback on success
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }}
       />
     </View>
   );
@@ -656,5 +1169,309 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...MeruTheme.typography.body,
     color: MeruTheme.colors.text.tertiary,
+  },
+  // Private Subtabs
+  subTabsContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  subTabsWrapper: {
+    flexDirection: 'row',
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.md,
+    padding: 4,
+  },
+  subTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: MeruTheme.radius.sm,
+  },
+  subTabActive: {
+    backgroundColor: MeruTheme.colors.accent.glow,
+  },
+  subTabLabel: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.tertiary,
+  },
+  // Private Stock Card
+  privateCard: {
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
+  },
+  privateTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  privateLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  privateIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privateIconText: {
+    fontSize: 20,
+  },
+  privateInfo: {
+    flex: 1,
+  },
+  privateBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  stageBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: MeruTheme.colors.background.elevated,
+  },
+  stageText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: MeruTheme.colors.text.secondary,
+  },
+  riskBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  riskText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  privateRight: {
+    alignItems: 'flex-end',
+  },
+  valuationLabel: {
+    fontSize: 10,
+    color: MeruTheme.colors.text.tertiary,
+    marginBottom: 2,
+  },
+  valuationValue: {
+    ...MeruTheme.typography.bodyMedium,
+    color: MeruTheme.colors.text.primary,
+    fontWeight: '600',
+  },
+  privateBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  privateMetric: {
+    flex: 1,
+  },
+  metricLabel: {
+    fontSize: 10,
+    color: MeruTheme.colors.text.tertiary,
+    marginBottom: 2,
+  },
+  metricValue: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.primary,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: MeruTheme.colors.background.elevated,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  roundInfo: {
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: MeruTheme.radius.sm,
+    borderWidth: 1,
+  },
+  roundText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  // ATS Token Card Styles
+  atsCard: {
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
+  },
+  atsTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  atsLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  atsPlatformIcon: {
+    fontSize: 28,
+  },
+  atsInfo: {
+    flex: 1,
+  },
+  atsRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  atsPrice: {
+    ...MeruTheme.typography.number,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  atsBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: MeruTheme.colors.border.subtle,
+  },
+  atsMetric: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  // Private Listing Card Styles
+  listingCard: {
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MeruTheme.colors.border.subtle,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  listingCardLocked: {
+    opacity: 1,
+    minHeight: 140,
+  },
+  lockedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 5, 10, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderRadius: MeruTheme.radius.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(240, 180, 41, 0.3)',
+    borderStyle: 'dashed',
+  },
+  lockIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  lockedTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  lockedSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  lockedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  blurredContent: {
+    opacity: 0.3,
+  },
+  listingTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  listingLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  listingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listingIconText: {
+    fontSize: 20,
+  },
+  listingInfo: {
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  listingProgress: {
+    marginBottom: 12,
+  },
+  listingProgressBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  listingProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  listingProgressText: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  listingBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: MeruTheme.colors.border.subtle,
+  },
+  listingMetric: {
+    flex: 1,
+    alignItems: 'center',
   },
 });

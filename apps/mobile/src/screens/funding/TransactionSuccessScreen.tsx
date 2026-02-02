@@ -85,7 +85,7 @@ const Particle: React.FC<{ delay: number; startX: number }> = ({ delay, startX }
 export const TransactionSuccessScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
-  const { type, amount, reference } = route.params || {
+  const { type, amount, reference, asset, shares, isStartup } = route.params || {
     type: 'deposit',
     amount: 0,
     reference: 'N/A',
@@ -131,10 +131,23 @@ export const TransactionSuccessScreen: React.FC = () => {
   };
 
   const isDeposit = type === 'deposit';
-  const title = isDeposit ? 'Deposit Successful' : 'Withdrawal Initiated';
-  const subtitle = isDeposit
-    ? 'Funds are now available in your account'
-    : 'Your withdrawal is being processed';
+  const isPrivateInvestment = type === 'private-investment';
+
+  let title: string;
+  let subtitle: string;
+
+  if (isPrivateInvestment) {
+    title = 'Investment Confirmed';
+    subtitle = isStartup
+      ? `Your investment in ${asset || 'the company'} is being processed`
+      : `Your shares of ${asset || 'the company'} have been reserved`;
+  } else if (isDeposit) {
+    title = 'Deposit Successful';
+    subtitle = 'Funds are now available in your account';
+  } else {
+    title = 'Withdrawal Initiated';
+    subtitle = 'Your withdrawal is being processed';
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -180,7 +193,11 @@ export const TransactionSuccessScreen: React.FC = () => {
         {/* Amount Display */}
         <View style={styles.amountContainer}>
           <Text style={styles.amountLabel}>
-            {isDeposit ? 'Amount Added' : 'Amount Withdrawn'}
+            {isPrivateInvestment
+              ? 'Investment Amount'
+              : isDeposit
+              ? 'Amount Added'
+              : 'Amount Withdrawn'}
           </Text>
           <Text style={styles.amount}>{formatCurrency(amount)}</Text>
         </View>
@@ -190,20 +207,48 @@ export const TransactionSuccessScreen: React.FC = () => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Transaction Type</Text>
             <Text style={styles.detailValue}>
-              {isDeposit ? 'Deposit' : 'Withdrawal'}
+              {isPrivateInvestment
+                ? isStartup
+                  ? 'Startup Investment'
+                  : 'Pre-IPO Purchase'
+                : isDeposit
+                ? 'Deposit'
+                : 'Withdrawal'}
             </Text>
           </View>
           <View style={styles.divider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Reference</Text>
-            <Text style={styles.detailValue}>{reference}</Text>
-          </View>
-          <View style={styles.divider} />
+          {isPrivateInvestment && asset && (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Company</Text>
+                <Text style={styles.detailValue}>{asset}</Text>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+          {isPrivateInvestment && shares !== undefined && (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Estimated Shares</Text>
+                <Text style={styles.detailValue}>{shares.toFixed(4)}</Text>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+          {reference && (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Reference</Text>
+                <Text style={styles.detailValue}>{reference}</Text>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>
-                {isDeposit ? 'Complete' : 'Processing'}
+                {isPrivateInvestment ? 'Confirmed' : isDeposit ? 'Complete' : 'Processing'}
               </Text>
             </View>
           </View>
@@ -221,6 +266,15 @@ export const TransactionSuccessScreen: React.FC = () => {
             </Text>
           </View>
         </View>
+
+        {/* Demo Notice for Private Investment */}
+        {isPrivateInvestment && (
+          <View style={styles.demoNotice}>
+            <Text style={styles.demoText}>
+              Demo Mode - This is a simulated investment
+            </Text>
+          </View>
+        )}
       </Animated.View>
 
       {/* Done Button */}
@@ -377,5 +431,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: MeruTheme.colors.background.primary,
+  },
+  demoNotice: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: 'rgba(240, 180, 41, 0.15)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  demoText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: MeruTheme.colors.accent.primary,
+    textAlign: 'center',
   },
 });

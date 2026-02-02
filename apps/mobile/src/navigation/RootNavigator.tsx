@@ -44,8 +44,20 @@ import { SwapScreen } from '../screens/swap/SwapScreen';
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { OnboardingSuccessScreen } from '../screens/onboarding/OnboardingSuccessScreen';
 
+// Private Stocks Screens
+import { PrivateStockDetailScreen } from '../screens/PrivateStockDetailScreen';
+import { PrivateInvestScreen } from '../screens/PrivateInvestScreen';
+
+// ATS Token Screens
+import { ATSTokenDetailScreen } from '../screens/ATSTokenDetailScreen';
+import { ATSTokenTradeScreen } from '../screens/ATSTokenTradeScreen';
+
+// Private Listing Screens
+import { PrivateListingDetailScreen } from '../screens/PrivateListingDetailScreen';
+import { PrivateListingInvestScreen } from '../screens/PrivateListingInvestScreen';
+
 // Types
-export type AssetType = 'crypto' | 'stock' | 'event';
+export type AssetType = 'crypto' | 'stock' | 'event' | 'private-stock';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -59,7 +71,7 @@ export type RootStackParamList = {
   Withdraw: undefined;
   PaymentMethods: undefined;
   AddBank: undefined;
-  TransactionSuccess: { type: 'deposit' | 'withdraw'; amount: number; reference: string };
+  TransactionSuccess: { type: 'deposit' | 'withdraw' | 'private-investment'; amount: number; reference?: string; asset?: string; shares?: number; isStartup?: boolean };
   // KYC
   KYC: undefined;
   PersonalInfo: undefined;
@@ -72,6 +84,15 @@ export type RootStackParamList = {
   // Onboarding
   Onboarding: { returnTo?: { screen: string; params?: any } };
   OnboardingSuccess: { returnTo?: { screen: string; params?: any } };
+  // Private Stocks
+  PrivateStockDetail: { symbol: string };
+  PrivateInvest: { symbol: string };
+  // ATS Tokens
+  ATSTokenDetail: { symbol: string };
+  ATSTokenTrade: { symbol: string; side?: 'buy' | 'sell' };
+  // Private Listings
+  PrivateListingDetail: { id: string };
+  PrivateListingInvest: { id: string };
 };
 
 export type MainTabParamList = {
@@ -265,6 +286,39 @@ export function RootNavigator() {
             name="OnboardingSuccess"
             component={OnboardingSuccessScreen}
             options={{ animation: 'fade', gestureEnabled: false }}
+          />
+          {/* Private Stocks Screens */}
+          <Stack.Screen
+            name="PrivateStockDetail"
+            component={PrivateStockDetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="PrivateInvest"
+            component={PrivateInvestScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* ATS Token Screens */}
+          <Stack.Screen
+            name="ATSTokenDetail"
+            component={ATSTokenDetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="ATSTokenTrade"
+            component={ATSTokenTradeScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* Private Listing Screens */}
+          <Stack.Screen
+            name="PrivateListingDetail"
+            component={PrivateListingDetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="PrivateListingInvest"
+            component={PrivateListingInvestScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
           />
         </>
       ) : (

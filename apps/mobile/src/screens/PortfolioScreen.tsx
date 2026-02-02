@@ -16,9 +16,11 @@ import { useNavigation } from '@react-navigation/native';
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore, TradeTransaction } from '../store/portfolioStore';
+import { useTheme } from '../hooks/useTheme';
 
-// Demo prices for assets
+// Demo prices for all asset types (crypto, stocks, events)
 const DEMO_PRICES: Record<string, number> = {
+  // Crypto
   BTC: 67234.89,
   ETH: 3456.78,
   SOL: 178.45,
@@ -28,6 +30,27 @@ const DEMO_PRICES: Record<string, number> = {
   DOGE: 0.1234,
   XRP: 0.5678,
   MATIC: 0.89,
+  LINK: 18.67,
+  DOT: 8.45,
+  UNI: 12.34,
+  // Stocks (from DEMO_STOCK_QUOTES)
+  AAPL: 178.45,
+  MSFT: 378.91,
+  GOOGL: 141.89,
+  AMZN: 178.25,
+  META: 505.75,
+  NVDA: 450.00,
+  TSLA: 220.00,
+  JPM: 195.50,
+  BAC: 35.25,
+  V: 275.00,
+  MA: 425.00,
+  JNJ: 160.00,
+  // Event Contracts (probability-based, 0-1 scale displayed as cents)
+  'FED-RATE-MAR': 0.42,
+  'BTC-100K-Q1': 0.28,
+  'ETH-ETF-APR': 0.65,
+  'AI-BREAKTHROUGH': 0.55,
 };
 
 type TabType = 'positions' | 'activity' | 'history';
@@ -36,6 +59,7 @@ export function PortfolioScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('positions');
   const [refreshing, setRefreshing] = useState(false);
+  const theme = useTheme();
 
   // Get cash balance from funding store
   const { cashBalance, transactions: fundingTransactions } = useFundingStore();
@@ -86,7 +110,7 @@ export function PortfolioScreen() {
 
   const renderPositionCard = ({ item }: { item: typeof positions[0] }) => (
     <TouchableOpacity
-      style={styles.positionCard}
+      style={[styles.positionCard, { backgroundColor: theme.colors.background.secondary }]}
       onPress={() =>
         navigation.navigate('InstrumentDetail' as never, {
           instrumentId: item.instrument,
@@ -100,16 +124,16 @@ export function PortfolioScreen() {
           </Text>
         </View>
         <View>
-          <Text style={styles.positionSymbol}>{item.symbol}</Text>
-          <Text style={styles.positionQty}>{parseFloat(item.quantity).toFixed(6)}</Text>
+          <Text style={[styles.positionSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+          <Text style={[styles.positionQty, { color: theme.colors.text.tertiary }]}>{parseFloat(item.quantity).toFixed(6)}</Text>
         </View>
       </View>
       <View style={styles.positionRight}>
-        <Text style={styles.positionValue}>{formatCurrency(item.marketValue)}</Text>
+        <Text style={[styles.positionValue, { color: theme.colors.text.primary }]}>{formatCurrency(item.marketValue)}</Text>
         <Text
           style={[
             styles.positionPnl,
-            parseFloat(item.unrealizedPnl) >= 0 ? styles.positive : styles.negative,
+            { color: parseFloat(item.unrealizedPnl) >= 0 ? theme.colors.success.primary : theme.colors.error.primary },
           ]}
         >
           {parseFloat(item.unrealizedPnl) >= 0 ? '+' : ''}
@@ -133,15 +157,15 @@ export function PortfolioScreen() {
   };
 
   const renderActivityItem = ({ item }: { item: TradeTransaction }) => (
-    <View style={styles.activityCard}>
+    <View style={[styles.activityCard, { backgroundColor: theme.colors.background.secondary }]}>
       <View style={styles.activityLeft}>
         <Text style={styles.activityIcon}>{formatTxType(item.type)}</Text>
         <View>
-          <Text style={styles.activityType}>
+          <Text style={[styles.activityType, { color: theme.colors.text.primary }]}>
             {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
             {item.type === 'swap' ? ` ${item.asset} → ${item.toAsset}` : ` ${item.asset}`}
           </Text>
-          <Text style={styles.activityDate}>
+          <Text style={[styles.activityDate, { color: theme.colors.text.tertiary }]}>
             {new Date(item.timestamp).toLocaleString()}
           </Text>
         </View>
@@ -149,16 +173,14 @@ export function PortfolioScreen() {
       <View style={styles.activityRight}>
         {item.type === 'swap' ? (
           <>
-            <Text style={styles.activityAmountNegative}>-{item.quantity.toFixed(6)} {item.asset}</Text>
-            <Text style={styles.activityAmountPositive}>+{item.toQuantity?.toFixed(6)} {item.toAsset}</Text>
+            <Text style={[styles.activityAmountNegative, { color: theme.colors.error.primary }]}>-{item.quantity.toFixed(6)} {item.asset}</Text>
+            <Text style={[styles.activityAmountPositive, { color: theme.colors.success.primary }]}>+{item.toQuantity?.toFixed(6)} {item.toAsset}</Text>
           </>
         ) : (
           <Text
             style={[
               styles.activityAmount,
-              item.type === 'sell' || item.type === 'send'
-                ? styles.activityAmountNegative
-                : styles.activityAmountPositive,
+              { color: item.type === 'sell' || item.type === 'send' ? theme.colors.error.primary : theme.colors.success.primary },
             ]}
           >
             {item.type === 'sell' || item.type === 'send' ? '-' : '+'}
@@ -170,14 +192,14 @@ export function PortfolioScreen() {
   );
 
   const renderFundingItem = ({ item }: { item: typeof fundingTransactions[0] }) => (
-    <View style={styles.activityCard}>
+    <View style={[styles.activityCard, { backgroundColor: theme.colors.background.secondary }]}>
       <View style={styles.activityLeft}>
         <Text style={styles.activityIcon}>{formatTxType(item.type)}</Text>
         <View>
-          <Text style={styles.activityType}>
+          <Text style={[styles.activityType, { color: theme.colors.text.primary }]}>
             {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
           </Text>
-          <Text style={styles.activityDate}>
+          <Text style={[styles.activityDate, { color: theme.colors.text.tertiary }]}>
             {new Date(item.timestamp).toLocaleString()}
           </Text>
         </View>
@@ -186,7 +208,7 @@ export function PortfolioScreen() {
         <Text
           style={[
             styles.activityAmount,
-            item.type === 'withdraw' ? styles.activityAmountNegative : styles.activityAmountPositive,
+            { color: item.type === 'withdraw' ? theme.colors.error.primary : theme.colors.success.primary },
           ]}
         >
           {item.type === 'withdraw' ? '-' : '+'}
@@ -209,13 +231,13 @@ export function PortfolioScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#00D4AA"
+                tintColor={theme.colors.accent.primary}
               />
             }
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No positions yet</Text>
-                <Text style={styles.emptySubtext}>Start trading to see your holdings here</Text>
+                <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>No positions yet</Text>
+                <Text style={[styles.emptySubtext, { color: theme.colors.text.tertiary }]}>Start trading to see your holdings here</Text>
               </View>
             }
           />
@@ -230,8 +252,8 @@ export function PortfolioScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No activity yet</Text>
-                <Text style={styles.emptySubtext}>Your trades and swaps will appear here</Text>
+                <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>No activity yet</Text>
+                <Text style={[styles.emptySubtext, { color: theme.colors.text.tertiary }]}>Your trades and swaps will appear here</Text>
               </View>
             }
           />
@@ -246,8 +268,8 @@ export function PortfolioScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No funding history</Text>
-                <Text style={styles.emptySubtext}>Deposits and withdrawals will appear here</Text>
+                <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>No funding history</Text>
+                <Text style={[styles.emptySubtext, { color: theme.colors.text.tertiary }]}>Deposits and withdrawals will appear here</Text>
               </View>
             }
           />
@@ -256,27 +278,27 @@ export function PortfolioScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background.primary }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Portfolio</Text>
+        <Text style={[styles.title, { color: theme.colors.text.primary }]}>Portfolio</Text>
       </View>
 
       {/* Portfolio Summary */}
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: theme.colors.background.secondary }]}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total Value</Text>
-            <Text style={styles.summaryValue}>
+            <Text style={[styles.summaryLabel, { color: theme.colors.text.tertiary }]}>Total Value</Text>
+            <Text style={[styles.summaryValue, { color: theme.colors.text.primary }]}>
               {formatCurrency(totalValue.toString())}
             </Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total P&L</Text>
+            <Text style={[styles.summaryLabel, { color: theme.colors.text.tertiary }]}>Total P&L</Text>
             <Text
               style={[
                 styles.summaryValue,
-                totalPnl >= 0 ? styles.positive : styles.negative,
+                { color: totalPnl >= 0 ? theme.colors.success.primary : theme.colors.error.primary },
               ]}
             >
               {totalPnl >= 0 ? '+' : ''}
@@ -292,16 +314,16 @@ export function PortfolioScreen() {
         {/* Balances */}
         <View style={styles.balancesRow}>
           {cashBalance > 0 && (
-            <View style={styles.balanceChip}>
-              <Text style={styles.balanceLabel}>Cash</Text>
-              <Text style={styles.balanceValue}>
+            <View style={[styles.balanceChip, { backgroundColor: theme.colors.background.primary }]}>
+              <Text style={[styles.balanceLabel, { color: theme.colors.text.tertiary }]}>Cash</Text>
+              <Text style={[styles.balanceValue, { color: theme.colors.text.primary }]}>
                 {formatCurrency(cashBalance.toString())}
               </Text>
             </View>
           )}
-          <View style={styles.balanceChip}>
-            <Text style={styles.balanceLabel}>Holdings</Text>
-            <Text style={styles.balanceValue}>
+          <View style={[styles.balanceChip, { backgroundColor: theme.colors.background.primary }]}>
+            <Text style={[styles.balanceLabel, { color: theme.colors.text.tertiary }]}>Holdings</Text>
+            <Text style={[styles.balanceValue, { color: theme.colors.text.primary }]}>
               {formatCurrency(totalHoldingsValue.toString())}
             </Text>
           </View>
@@ -310,18 +332,18 @@ export function PortfolioScreen() {
         {/* Quick Funding Actions */}
         <View style={styles.fundingActions}>
           <TouchableOpacity
-            style={styles.fundingButton}
+            style={[styles.fundingButton, { backgroundColor: theme.colors.background.primary }]}
             onPress={() => navigation.navigate('Deposit' as never)}
           >
-            <Text style={styles.fundingButtonIcon}>↓</Text>
-            <Text style={styles.fundingButtonText}>Deposit</Text>
+            <Text style={[styles.fundingButtonIcon, { color: theme.colors.accent.primary }]}>↓</Text>
+            <Text style={[styles.fundingButtonText, { color: theme.colors.text.primary }]}>Deposit</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.fundingButton}
+            style={[styles.fundingButton, { backgroundColor: theme.colors.background.primary }]}
             onPress={() => navigation.navigate('Withdraw' as never)}
           >
-            <Text style={styles.fundingButtonIcon}>↑</Text>
-            <Text style={styles.fundingButtonText}>Withdraw</Text>
+            <Text style={[styles.fundingButtonIcon, { color: theme.colors.accent.primary }]}>↑</Text>
+            <Text style={[styles.fundingButtonText, { color: theme.colors.text.primary }]}>Withdraw</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -329,26 +351,26 @@ export function PortfolioScreen() {
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'positions' && styles.activeTab]}
+          style={[styles.tab, { backgroundColor: theme.colors.background.secondary }, activeTab === 'positions' && { backgroundColor: theme.colors.accent.primary }]}
           onPress={() => setActiveTab('positions')}
         >
-          <Text style={[styles.tabText, activeTab === 'positions' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.text.tertiary }, activeTab === 'positions' && { color: theme.colors.text.inverse }]}>
             Holdings ({holdings.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'activity' && styles.activeTab]}
+          style={[styles.tab, { backgroundColor: theme.colors.background.secondary }, activeTab === 'activity' && { backgroundColor: theme.colors.accent.primary }]}
           onPress={() => setActiveTab('activity')}
         >
-          <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.text.tertiary }, activeTab === 'activity' && { color: theme.colors.text.inverse }]}>
             Activity ({tradeTransactions.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+          style={[styles.tab, { backgroundColor: theme.colors.background.secondary }, activeTab === 'history' && { backgroundColor: theme.colors.accent.primary }]}
           onPress={() => setActiveTab('history')}
         >
-          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.text.tertiary }, activeTab === 'history' && { color: theme.colors.text.inverse }]}>
             Funding
           </Text>
         </TouchableOpacity>
