@@ -892,6 +892,22 @@ export function InstrumentDetailScreen() {
               <Text style={styles.tradeButtonText}>Buy No</Text>
             </TouchableOpacity>
           </View>
+        ) : isStock ? (
+          /* Stock buttons - Buy & Sell only (no Swap/Send for stocks) */
+          <View style={styles.stockButtons}>
+            <TouchableOpacity
+              style={[styles.tradeButton, styles.buyButton]}
+              onPress={() => handleTradePress('buy')}
+            >
+              <Text style={styles.tradeButtonText}>Buy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tradeButton, styles.sellButton]}
+              onPress={() => handleTradePress('sell')}
+            >
+              <Text style={styles.tradeButtonText}>Sell</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={styles.cryptoButtonsContainer}>
             {/* Primary Actions: Buy & Sell */}
@@ -909,7 +925,7 @@ export function InstrumentDetailScreen() {
                 <Text style={styles.tradeButtonText}>Sell</Text>
               </TouchableOpacity>
             </View>
-            {/* Secondary Actions: Swap & Send */}
+            {/* Secondary Actions: Swap & Send - Crypto only */}
             <View style={styles.secondaryButtons}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -1248,6 +1264,10 @@ const styles = StyleSheet.create({
     borderTopColor: '#1A1A1A',
   },
   eventButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  stockButtons: {
     flexDirection: 'row',
     gap: 12,
   },

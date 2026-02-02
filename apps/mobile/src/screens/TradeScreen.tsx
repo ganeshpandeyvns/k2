@@ -312,11 +312,29 @@ export function TradeScreen() {
       }
     };
 
+    // For stocks when market is closed, show queue confirmation
+    const isMarketClosed = isStock && marketStatus && marketStatus.session === 'closed';
+    const nextOpenFormatted = marketStatus?.nextOpen
+      ? marketStatus.nextOpen.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      : 'next market day';
+
+    if (isMarketClosed) {
+      Alert.alert(
+        'Market Closed',
+        `The market is currently closed. Your order will be queued and executed when the market opens on ${nextOpenFormatted} at 9:30 AM ET.\n\n${side === 'buy' ? 'Buy' : 'Sell'} ${inputMode === 'dollars' ? formatCurrency(dollarAmount) : `${orderQuantity.toFixed(4)} shares`} of ${baseAsset}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Queue Order', onPress: executeOrder },
+        ]
+      );
+      return;
+    }
+
     // Confirm large transactions (over $1000)
     if (orderTotal > 1000) {
       Alert.alert(
         'Confirm Large Order',
-        `You are about to ${side} ${orderQuantity.toFixed(6)} ${baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
+        `You are about to ${side} ${orderQuantity.toFixed(isStock ? 4 : 6)} ${isStock ? `shares of ${baseAsset}` : baseAsset} for ${formatCurrency(orderTotal.toString())}.\n\nAre you sure you want to proceed?`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Confirm', style: 'destructive', onPress: executeOrder },
@@ -325,8 +343,8 @@ export function TradeScreen() {
       return;
     }
 
-    // For market orders with dollar amount, show slippage warning
-    if (inputMode === 'dollars' && orderType === 'market') {
+    // For market orders with dollar amount, show slippage warning (crypto only - stocks queue when closed)
+    if (inputMode === 'dollars' && orderType === 'market' && !isStock) {
       Alert.alert(
         'Market Order',
         `This is a market order. The final price may differ slightly from ${formatCurrency(currentPrice)} due to market conditions.\n\nEstimated: ${orderQuantity.toFixed(6)} ${baseAsset}`,
@@ -339,7 +357,7 @@ export function TradeScreen() {
     }
 
     executeOrder();
-  }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, isStock, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder, extendedHours, canTradeExtendedHours]);
+  }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, isStock, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder, extendedHours, canTradeExtendedHours, marketStatus]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -607,7 +625,28 @@ export function TradeScreen() {
                 <Text style={styles.summaryValueHighlight}>Market Order</Text>
               </View>
             )}
+            {/* Show queued status for stocks when market is closed */}
+            {isStock && marketStatus?.session === 'closed' && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Status</Text>
+                <Text style={styles.summaryValueQueued}>Queued for Open</Text>
+              </View>
+            )}
           </View>
+
+          {/* Queued Order Notice for Stocks */}
+          {isStock && marketStatus?.session === 'closed' && (
+            <View style={styles.queuedOrderNotice}>
+              <Text style={styles.queuedOrderIcon}>🕐</Text>
+              <View style={styles.queuedOrderInfo}>
+                <Text style={styles.queuedOrderTitle}>Order will be queued</Text>
+                <Text style={styles.queuedOrderText}>
+                  Market is closed. Your order will execute when the market opens
+                  {marketStatus.nextOpen ? ` on ${marketStatus.nextOpen.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at 9:30 AM ET` : ''}.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Extended Hours Toggle for Stocks */}
           {isStock && canTradeExtendedHours && (
@@ -677,6 +716,8 @@ export function TradeScreen() {
                 ? 'Submitting...'
                 : isEvent
                 ? `Buy ${eventSide.toUpperCase()}`
+                : isStock && marketStatus?.session === 'closed'
+                ? `Queue ${side === 'buy' ? 'Buy' : 'Sell'} Order`
                 : `${side === 'buy' ? 'Buy' : 'Sell'} ${instrument?.baseAsset || ''}`}
             </Text>
           </TouchableOpacity>
@@ -902,6 +943,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#00D4AA',
   },
+  summaryValueQueued: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F0B429',
+  },
   warning: {
     backgroundColor: 'rgba(255, 77, 77, 0.1)',
     borderRadius: 8,
@@ -1027,5 +1073,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     textAlign: 'center',
+  },
+  queuedOrderNotice: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(240, 180, 41, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(240, 180, 41, 0.3)',
+  },
+  queuedOrderIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  queuedOrderInfo: {
+    flex: 1,
+  },
+  queuedOrderTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F0B429',
+    marginBottom: 4,
+  },
+  queuedOrderText: {
+    fontSize: 13,
+    color: '#CCAA33',
+    lineHeight: 18,
   },
 });
