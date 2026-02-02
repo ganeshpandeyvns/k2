@@ -40,6 +40,10 @@ import { ReceiveScreen } from '../screens/wallet/ReceiveScreen';
 // Swap Screens
 import { SwapScreen } from '../screens/swap/SwapScreen';
 
+// Onboarding Screens
+import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
+import { OnboardingSuccessScreen } from '../screens/onboarding/OnboardingSuccessScreen';
+
 // Types
 export type RootStackParamList = {
   Welcome: undefined;
@@ -63,6 +67,9 @@ export type RootStackParamList = {
   Receive: { asset?: string };
   // Swap
   Swap: undefined;
+  // Onboarding
+  Onboarding: { returnTo?: { screen: string; params?: any } };
+  OnboardingSuccess: { returnTo?: { screen: string; params?: any } };
 };
 
 export type MainTabParamList = {
@@ -245,6 +252,17 @@ export function RootNavigator() {
             name="Swap"
             component={SwapScreen}
             options={{ animation: 'slide_from_bottom' }}
+          />
+          {/* Onboarding Screens */}
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="OnboardingSuccess"
+            component={OnboardingSuccessScreen}
+            options={{ animation: 'fade', gestureEnabled: false }}
           />
         </>
       ) : (

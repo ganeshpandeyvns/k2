@@ -213,18 +213,34 @@ export const MeruTheme = {
   },
 };
 
-// Demo user data
-export const DemoUser = {
-  id: 'demo-001',
-  name: 'Alex',
-  fullName: 'Alex Morgan',
-  email: 'alex@demo.meru.app',
-  avatar: null,
-  preferences: {
-    currency: 'USD',
-    theme: 'dark',
+// Demo user profiles
+export const DemoUsers = {
+  alex: {
+    id: 'demo-alan',
+    name: 'Alan',
+    fullName: 'Alan Swimmer',
+    email: 'alan@demo.meru.app',
+    avatar: null,
+    preferences: {
+      currency: 'USD',
+      theme: 'dark',
+    },
+  },
+  mike: {
+    id: 'demo-mike',
+    name: 'Mike',
+    fullName: 'Mike Diedrichs',
+    email: 'mike@demo.meru.app',
+    avatar: null,
+    preferences: {
+      currency: 'USD',
+      theme: 'dark',
+    },
   },
 };
+
+// Default demo user (Alan) - for backward compatibility
+export const DemoUser = DemoUsers.alex;
 
 // Format helpers
 export const formatCurrency = (value: number, compact = false): string => {

@@ -50,6 +50,10 @@ interface PortfolioState {
   getTotalValue: (prices: Record<string, number>) => number;
   getTransactionHistory: () => TradeTransaction[];
   clearAll: () => void;
+
+  // Profile state loaders
+  loadAlexState: () => void;
+  loadMikeState: () => void;
 }
 
 // Default demo holdings
@@ -317,6 +321,58 @@ export const usePortfolioStore = create<PortfolioState>()(
       clearAll: () =>
         set({
           holdings: DEFAULT_HOLDINGS,
+          transactions: [],
+        }),
+
+      // Load Alex's portfolio state with holdings
+      loadAlexState: () =>
+        set({
+          holdings: [
+            { symbol: 'BTC', name: 'Bitcoin', quantity: 1.234, avgCost: 58000, color: '#f7931a' },
+            { symbol: 'ETH', name: 'Ethereum', quantity: 8.5, avgCost: 3200, color: '#627eea' },
+            { symbol: 'SOL', name: 'Solana', quantity: 45.2, avgCost: 155, color: '#00ffa3' },
+            { symbol: 'AVAX', name: 'Avalanche', quantity: 120, avgCost: 38, color: '#e84142' },
+            { symbol: 'FED-RATE-MAR', name: 'Fed Rate Cut - Mar', quantity: 50, avgCost: 0.35, color: '#f0b429' },
+            { symbol: 'BTC-100K-Q1', name: 'BTC $100K Q1', quantity: 25, avgCost: 0.22, color: '#f7931a' },
+          ],
+          transactions: [
+            {
+              id: 'tx_alex_trade_001',
+              type: 'buy',
+              asset: 'BTC',
+              quantity: 0.5,
+              price: 62000,
+              total: 31000,
+              timestamp: '2024-01-20T10:30:00Z',
+              status: 'completed',
+            },
+            {
+              id: 'tx_alex_trade_002',
+              type: 'buy',
+              asset: 'ETH',
+              quantity: 3.0,
+              price: 3400,
+              total: 10200,
+              timestamp: '2024-01-18T14:15:00Z',
+              status: 'completed',
+            },
+            {
+              id: 'tx_alex_trade_003',
+              type: 'buy',
+              asset: 'SOL',
+              quantity: 20,
+              price: 165,
+              total: 3300,
+              timestamp: '2024-01-15T09:00:00Z',
+              status: 'completed',
+            },
+          ],
+        }),
+
+      // Load Mike's fresh state - no holdings, no transactions
+      loadMikeState: () =>
+        set({
+          holdings: [],
           transactions: [],
         }),
     }),

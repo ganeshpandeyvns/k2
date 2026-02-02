@@ -22,7 +22,11 @@ import * as Haptics from 'expo-haptics';
 
 import { useBiometrics } from '../hooks/useBiometrics';
 import { useAuthStore } from '../store/authStore';
-import { DemoUser } from '../theme/meru';
+import { DemoUsers } from '../theme/meru';
+import { useUserProfileStore, DEMO_PROFILES } from '../store/userProfileStore';
+import { useKYCStore } from '../store/kycStore';
+import { useFundingStore } from '../store/fundingStore';
+import { usePortfolioStore } from '../store/portfolioStore';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -147,6 +151,49 @@ export function WelcomeScreen() {
   const { isAvailable, biometricType, authenticate, getBiometricLabel } = useBiometrics();
   const login = useAuthStore((state) => state.login);
 
+  // Profile store
+  const { switchProfile } = useUserProfileStore();
+  const loadAlexKYC = useKYCStore((state) => state.loadAlexState);
+  const loadMikeKYC = useKYCStore((state) => state.loadMikeState);
+  const loadAlexFunding = useFundingStore((state) => state.loadAlexState);
+  const loadMikeFunding = useFundingStore((state) => state.loadMikeState);
+  const loadAlexPortfolio = usePortfolioStore((state) => state.loadAlexState);
+  const loadMikePortfolio = usePortfolioStore((state) => state.loadMikeState);
+
+  // Handle profile selection
+  const handleSelectProfile = async (profileId: 'alex' | 'mike') => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Switch profile
+    switchProfile(profileId);
+
+    // Load profile-specific state
+    if (profileId === 'alex') {
+      loadAlexKYC();
+      loadAlexFunding();
+      loadAlexPortfolio();
+
+      // Login as Alex
+      login(
+        { id: DemoUsers.alex.id, email: DemoUsers.alex.email, displayName: DemoUsers.alex.name },
+        'alex-demo-token',
+        'alex-demo-refresh'
+      );
+    } else {
+      // Mike - reset to fresh state every time for demo
+      loadMikeKYC();
+      loadMikeFunding();
+      loadMikePortfolio();
+
+      // Login as Mike
+      login(
+        { id: DemoUsers.mike.id, email: DemoUsers.mike.email, displayName: DemoUsers.mike.name },
+        'mike-demo-token',
+        'mike-demo-refresh'
+      );
+    }
+  };
+
   // Animations
   const logoScale = useRef(new Animated.Value(0.8)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -211,19 +258,12 @@ export function WelcomeScreen() {
     if (isAvailable) {
       const success = await authenticate(`Sign in to Meru with ${getBiometricLabel()}`);
       if (success) {
-        login(
-          { id: DemoUser.id, email: DemoUser.email, displayName: DemoUser.name },
-          'biometric-access-token',
-          'biometric-refresh-token'
-        );
+        // Default to Alex profile for biometric auth
+        handleSelectProfile('alex');
       }
     } else {
-      // Demo: just login
-      login(
-        { id: DemoUser.id, email: DemoUser.email, displayName: DemoUser.name },
-        'demo-token',
-        'demo-refresh'
-      );
+      // Demo: default to Alex profile
+      handleSelectProfile('alex');
     }
   };
 
@@ -342,28 +382,55 @@ export function WelcomeScreen() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>demo profiles</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Buttons */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.createButton,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={handleCreateAccount}
-          >
-            <LinearGradient
-              colors={['#f0b429', '#e6a623', '#d4a028']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.buttonGradient}
+          {/* Profile Selection Cards */}
+          <View style={styles.profileCards}>
+            {/* Alan - Verified User */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.profileCard,
+                pressed && styles.profileCardPressed,
+              ]}
+              onPress={() => handleSelectProfile('alex')}
             >
-              <Text style={styles.createButtonText}>Create Account</Text>
-            </LinearGradient>
-          </Pressable>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileAvatarText}>A</Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>Alan Swimmer</Text>
+                <Text style={styles.profileStatus}>Verified • $10K balance</Text>
+              </View>
+              <View style={styles.profileBadge}>
+                <Text style={styles.profileBadgeText}>Full Access</Text>
+              </View>
+            </Pressable>
 
+            {/* Mike - New User */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.profileCard,
+                styles.profileCardMike,
+                pressed && styles.profileCardPressed,
+              ]}
+              onPress={() => handleSelectProfile('mike')}
+            >
+              <View style={[styles.profileAvatar, styles.profileAvatarMike]}>
+                <Text style={styles.profileAvatarText}>M</Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>Mike Diedrichs</Text>
+                <Text style={styles.profileStatus}>New user • Onboarding</Text>
+              </View>
+              <View style={[styles.profileBadge, styles.profileBadgeMike]}>
+                <Text style={[styles.profileBadgeText, styles.profileBadgeTextMike]}>Demo Setup</Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Sign In Button */}
           <Pressable
             style={({ pressed }) => [
               styles.signInButton,
@@ -371,7 +438,7 @@ export function WelcomeScreen() {
             ]}
             onPress={handleSignIn}
           >
-            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={styles.signInButtonText}>Sign In with Email</Text>
           </Pressable>
         </Animated.View>
 
@@ -566,5 +633,76 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.2)',
     marginHorizontal: 12,
+  },
+  // Profile Selection Styles
+  profileCards: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(240, 180, 41, 0.08)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(240, 180, 41, 0.2)',
+  },
+  profileCardMike: {
+    backgroundColor: 'rgba(100, 100, 120, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  profileCardPressed: {
+    backgroundColor: 'rgba(240, 180, 41, 0.15)',
+    transform: [{ scale: 0.98 }],
+  },
+  profileAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f0b429',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  profileAvatarMike: {
+    backgroundColor: '#6366f1',
+  },
+  profileAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 2,
+  },
+  profileStatus: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  profileBadge: {
+    backgroundColor: 'rgba(0, 212, 170, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  profileBadgeMike: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+  },
+  profileBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#00d4aa',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  profileBadgeTextMike: {
+    color: '#818cf8',
   },
 });

@@ -1,5 +1,6 @@
 // ============================================================================
 // PortfolioChart - Large interactive portfolio value chart
+// Uses a single master dataset so time ranges are logically connected
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
@@ -14,182 +15,173 @@ const CHART_PADDING = 16;
 
 type TimeRange = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
 
+interface Holding {
+  symbol: string;
+  quantity: number;
+}
+
 interface PortfolioChartProps {
   currentValue: number;
   change24h: number;
   changePercent24h: number;
+  holdings?: Holding[];
+  prices?: Record<string, number>;
 }
 
-// Perlin-like noise for smooth organic movement
-const smoothNoise = (x: number, seed: number): number => {
-  const n = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
-  return n - Math.floor(n);
+// ============================================================================
+// Master Historical Data Generation
+// Generates 2 years of daily data, all time ranges slice from this
+// ============================================================================
+
+// Realistic 2-year price patterns (730 days of daily multipliers)
+// Pattern: Bear market -> Bottom -> Recovery -> Bull run -> Current
+const generateMasterPattern = (seed: number): number[] => {
+  const days = 730; // 2 years
+  const data: number[] = [];
+
+  // Use seed for consistent randomness
+  const seededRandom = (i: number) => {
+    const x = Math.sin(seed + i * 0.1) * 10000;
+    return x - Math.floor(x);
+  };
+
+  // Define market phases with realistic crypto patterns
+  // Phase 1: Days 0-120 - Bear market decline (ATH to -60%)
+  // Phase 2: Days 120-240 - Bottom consolidation (-60% to -55%)
+  // Phase 3: Days 240-450 - Recovery (-55% to -20%)
+  // Phase 4: Days 450-600 - Bull run (-20% to +5%)
+  // Phase 5: Days 600-730 - Recent period (+5% to current)
+
+  let value = 1.0; // Start at "ATH" (will scale later)
+
+  for (let day = 0; day < days; day++) {
+    const progress = day / days;
+    let targetMultiplier: number;
+    let volatility: number;
+
+    if (day < 120) {
+      // Bear market: decline from 1.0 to 0.4
+      const phaseProgress = day / 120;
+      targetMultiplier = 1.0 - (0.6 * phaseProgress);
+      volatility = 0.025;
+    } else if (day < 240) {
+      // Bottom: consolidate around 0.4
+      const phaseProgress = (day - 120) / 120;
+      targetMultiplier = 0.4 + (0.05 * Math.sin(phaseProgress * Math.PI * 3));
+      volatility = 0.015;
+    } else if (day < 450) {
+      // Recovery: 0.4 to 0.8
+      const phaseProgress = (day - 240) / 210;
+      targetMultiplier = 0.4 + (0.4 * phaseProgress);
+      volatility = 0.02;
+    } else if (day < 600) {
+      // Bull run: 0.8 to 1.05
+      const phaseProgress = (day - 450) / 150;
+      targetMultiplier = 0.8 + (0.25 * phaseProgress);
+      volatility = 0.018;
+    } else {
+      // Recent: slight consolidation around 1.0
+      const phaseProgress = (day - 600) / 130;
+      targetMultiplier = 1.0 + (0.02 * Math.sin(phaseProgress * Math.PI * 2));
+      volatility = 0.012;
+    }
+
+    // Add daily noise
+    const noise = (seededRandom(day) - 0.5) * volatility * 2;
+
+    // Mean reversion towards target
+    const reversion = (targetMultiplier - value) * 0.1;
+
+    value = value + reversion + noise;
+
+    // Clamp to reasonable bounds
+    value = Math.max(0.3, Math.min(1.2, value));
+
+    data.push(value);
+  }
+
+  // Normalize so last value is exactly 1.0
+  const lastValue = data[data.length - 1];
+  return data.map(v => v / lastValue);
 };
 
-// Interpolate smoothly between noise samples
-const smoothInterpolate = (a: number, b: number, t: number): number => {
-  const ft = t * Math.PI;
-  const f = (1 - Math.cos(ft)) * 0.5;
-  return a * (1 - f) + b * f;
+// Cache the master data
+let cachedMasterData: number[] | null = null;
+let cachedSeed: number = 0;
+
+const getMasterData = (currentValue: number): number[] => {
+  // Use currentValue to create a consistent seed
+  const seed = Math.floor(currentValue / 1000) + 42;
+
+  if (!cachedMasterData || cachedSeed !== seed) {
+    cachedMasterData = generateMasterPattern(seed);
+    cachedSeed = seed;
+  }
+
+  return cachedMasterData;
 };
 
-// Generate smooth noise value at position
-const getSmoothNoise = (x: number, seed: number): number => {
-  const intX = Math.floor(x);
-  const fracX = x - intX;
-  const v1 = smoothNoise(intX, seed);
-  const v2 = smoothNoise(intX + 1, seed);
-  return smoothInterpolate(v1, v2, fracX);
-};
+// Get data for specific time range by slicing master data
+const getChartData = (
+  currentValue: number,
+  range: TimeRange,
+  displayPoints: number = 60
+): number[] => {
+  const masterData = getMasterData(currentValue);
 
-// Generate realistic portfolio data with authentic market dynamics
-const generatePortfolioData = (baseValue: number, range: TimeRange): number[] => {
-  const pointsMap: Record<TimeRange, number> = {
-    '1D': 96,
-    '1W': 168,
-    '1M': 120,
-    '3M': 180,
+  // Map time ranges to number of days
+  const daysMap: Record<TimeRange, number> = {
+    '1D': 1,
+    '1W': 7,
+    '1M': 30,
+    '3M': 90,
     '1Y': 365,
     'ALL': 730,
   };
 
-  const volatilityMap: Record<TimeRange, number> = {
-    '1D': 0.004,
-    '1W': 0.008,
-    '1M': 0.012,
-    '3M': 0.016,
-    '1Y': 0.022,
-    'ALL': 0.028,
-  };
+  const days = daysMap[range];
 
-  const points = pointsMap[range];
-  const baseVolatility = volatilityMap[range];
-  const seed = Math.random() * 1000;
+  // For ranges less than the display points, we need to interpolate
+  // For 1D, use the last day but add intraday variation
+  if (range === '1D') {
+    // Get last 2 days to show transition
+    const lastTwoDays = masterData.slice(-2);
+    const startValue = lastTwoDays[0];
+    const endValue = lastTwoDays[1];
 
-  // Determine market personality for this chart
-  const isVolatile = Math.random() > 0.6;
-  const hasMajorCorrection = Math.random() > 0.65;
-  const correctionPoint = 0.3 + Math.random() * 0.4; // Where correction starts
-  const correctionDepth = 0.08 + Math.random() * 0.12; // How deep
-
-  // Start from a lower value and trend up to current
-  const growthFactor = 0.7 + Math.random() * 0.2;
-  const startValue = baseValue * growthFactor;
-  const data: number[] = [];
-
-  // Pre-generate some "market phases" - areas of different behavior
-  const phaseCount = 4 + Math.floor(Math.random() * 3);
-  const phases: { start: number; type: 'bull' | 'bear' | 'consolidation' }[] = [];
-  let phasePos = 0;
-  for (let p = 0; p < phaseCount; p++) {
-    const phaseLength = (1 - phasePos) / (phaseCount - p);
-    const randomType = Math.random();
-    phases.push({
-      start: phasePos,
-      type: randomType > 0.65 ? 'bull' : randomType > 0.35 ? 'consolidation' : 'bear',
-    });
-    phasePos += phaseLength * (0.7 + Math.random() * 0.6);
+    // Generate 24-hour intraday pattern
+    const intradayData: number[] = [];
+    for (let i = 0; i < displayPoints; i++) {
+      const progress = i / (displayPoints - 1);
+      // Smooth transition with some intraday noise
+      const baseValue = startValue + (endValue - startValue) * progress;
+      const intradayNoise = Math.sin(progress * Math.PI * 4) * 0.005 +
+                           Math.sin(progress * Math.PI * 8) * 0.003;
+      intradayData.push((baseValue + intradayNoise) * currentValue);
+    }
+    intradayData[intradayData.length - 1] = currentValue;
+    return intradayData;
   }
 
-  const getPhase = (progress: number) => {
-    for (let i = phases.length - 1; i >= 0; i--) {
-      if (progress >= phases[i].start) return phases[i].type;
-    }
-    return 'consolidation';
-  };
+  // Slice the last N days from master data
+  const startIndex = Math.max(0, masterData.length - days);
+  const slicedData = masterData.slice(startIndex);
 
-  // Generate the data
-  let prevValue = startValue;
-  let prevDelta = 0;
-
-  for (let i = 0; i < points; i++) {
-    const progress = i / (points - 1);
-    const phase = getPhase(progress);
-
-    // Base trend calculation with easing
-    const easeProgress = 1 - Math.pow(1 - progress, 2); // Ease out
-    const targetValue = startValue + (baseValue - startValue) * easeProgress;
-
-    // Variable volatility based on phase
-    let volatility = baseVolatility;
-    if (phase === 'bull') volatility *= 0.8;
-    else if (phase === 'bear') volatility *= 1.4;
-    if (isVolatile) volatility *= 1.3;
-
-    // Multi-frequency noise for organic movement
-    const noise1 = getSmoothNoise(i * 0.08, seed) - 0.5;      // Very slow trend waves
-    const noise2 = getSmoothNoise(i * 0.2, seed + 50) - 0.5;  // Medium waves
-    const noise3 = getSmoothNoise(i * 0.5, seed + 100) - 0.5; // Faster ripples
-    const noise4 = getSmoothNoise(i * 1.2, seed + 150) - 0.5; // Quick noise
-
-    // Combine noises with weights based on phase
-    let combinedNoise: number;
-    if (phase === 'consolidation') {
-      // Tighter, less directional movement
-      combinedNoise = noise2 * 0.3 + noise3 * 0.4 + noise4 * 0.3;
-    } else {
-      // More directional movement
-      combinedNoise = noise1 * 0.4 + noise2 * 0.35 + noise3 * 0.2 + noise4 * 0.05;
-    }
-
-    // Add major correction if applicable
-    let correctionAdjust = 0;
-    if (hasMajorCorrection && progress >= correctionPoint && progress < correctionPoint + 0.15) {
-      const correctionProgress = (progress - correctionPoint) / 0.15;
-      const correctionWave = Math.sin(correctionProgress * Math.PI);
-      correctionAdjust = -correctionWave * correctionDepth * targetValue;
-    }
-
-    // Phase-specific bias
-    let phaseBias = 0;
-    if (phase === 'bull') phaseBias = volatility * 0.3;
-    else if (phase === 'bear') phaseBias = -volatility * 0.4;
-
-    // Calculate the movement
-    const noiseAmount = combinedNoise * volatility * targetValue;
-
-    // Momentum with decay (price continues direction but fades)
-    const momentumDecay = 0.85;
-    const momentum = prevDelta * momentumDecay * 0.4;
-
-    // Mean reversion pull towards target
-    const deviation = prevValue - targetValue;
-    const meanReversionStrength = 0.02;
-    const meanReversion = -deviation * meanReversionStrength;
-
-    // Combine all factors
-    const rawValue = prevValue + noiseAmount + momentum + meanReversion + phaseBias + correctionAdjust;
-
-    // Ensure reasonable bounds
-    const minValue = startValue * 0.5;
-    const maxValue = baseValue * 1.3;
-    const value = Math.max(minValue, Math.min(maxValue, rawValue));
-
-    prevDelta = value - prevValue;
-    prevValue = value;
-    data.push(value);
-  }
-
-  // Smooth convergence to final value in last 8% of chart
-  const convergenceStart = Math.floor(points * 0.92);
-  for (let i = convergenceStart; i < points; i++) {
-    const t = (i - convergenceStart) / (points - 1 - convergenceStart);
-    const easeT = t * t * (3 - 2 * t); // Smooth step
-    data[i] = data[i] * (1 - easeT) + baseValue * easeT;
-  }
-  data[data.length - 1] = baseValue;
-
-  // Reduce to display points while preserving features
-  const displayPoints = 80;
-  if (data.length <= displayPoints) return data;
-
-  const step = data.length / displayPoints;
+  // Downsample or interpolate to display points
   const result: number[] = [];
   for (let i = 0; i < displayPoints; i++) {
-    const idx = Math.min(Math.floor(i * step), data.length - 1);
-    result.push(data[idx]);
+    const progress = i / (displayPoints - 1);
+    const sourceIndex = progress * (slicedData.length - 1);
+    const lowerIndex = Math.floor(sourceIndex);
+    const upperIndex = Math.min(lowerIndex + 1, slicedData.length - 1);
+    const t = sourceIndex - lowerIndex;
+
+    const interpolatedValue = slicedData[lowerIndex] * (1 - t) + slicedData[upperIndex] * t;
+    result.push(interpolatedValue * currentValue);
   }
-  result[result.length - 1] = baseValue;
+
+  // Ensure last point is exactly current value
+  result[result.length - 1] = currentValue;
 
   return result;
 };
@@ -198,20 +190,23 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
   currentValue,
   change24h,
   changePercent24h,
+  holdings,
+  prices,
 }) => {
   const [selectedRange, setSelectedRange] = useState<TimeRange>('1M');
   const [touchX, setTouchX] = useState<number | null>(null);
 
   const chartWidth = SCREEN_WIDTH - CHART_PADDING * 2;
 
-  const { data, isPositive } = useMemo(() => {
-    const data = generatePortfolioData(currentValue, selectedRange);
-    const isPositive = data[data.length - 1] >= data[0];
-    return { data, isPositive };
+  const { data, isPositive, startValue } = useMemo(() => {
+    const data = getChartData(currentValue, selectedRange);
+    const startValue = data[0];
+    const isPositive = data[data.length - 1] >= startValue;
+    return { data, isPositive, startValue };
   }, [currentValue, selectedRange]);
 
-  const { linePath, areaPath, min, max, touchValue } = useMemo(() => {
-    if (data.length < 2) return { linePath: '', areaPath: '', min: 0, max: 0, touchValue: null };
+  const { linePath, areaPath, touchValue } = useMemo(() => {
+    if (data.length < 2) return { linePath: '', areaPath: '', touchValue: null };
 
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -253,12 +248,16 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
       };
     }
 
-    return { linePath, areaPath, min, max, touchValue };
+    return { linePath, areaPath, touchValue };
   }, [data, chartWidth, touchX]);
 
   const color = isPositive
     ? MeruTheme.colors.success.primary
     : MeruTheme.colors.error.primary;
+
+  // Calculate change for selected range
+  const rangeChange = currentValue - startValue;
+  const rangeChangePercent = startValue > 0 ? ((currentValue - startValue) / startValue) * 100 : 0;
 
   const ranges: TimeRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
 
@@ -272,13 +271,14 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
         </Text>
         <View style={styles.changeRow}>
           <Text style={[styles.changeAmount, { color }]}>
-            {change24h >= 0 ? '+' : ''}{formatCurrency(change24h)}
+            {rangeChange >= 0 ? '+' : ''}{formatCurrency(rangeChange)}
           </Text>
           <View style={[styles.changeBadge, { backgroundColor: color + '20' }]}>
             <Text style={[styles.changePercent, { color }]}>
-              {changePercent24h >= 0 ? '+' : ''}{changePercent24h.toFixed(2)}%
+              {rangeChangePercent >= 0 ? '+' : ''}{rangeChangePercent.toFixed(2)}%
             </Text>
           </View>
+          <Text style={styles.rangeLabel}>{selectedRange}</Text>
         </View>
       </View>
 
@@ -419,6 +419,11 @@ const styles = StyleSheet.create({
   changePercent: {
     ...MeruTheme.typography.caption,
     fontWeight: '600',
+  },
+  rangeLabel: {
+    ...MeruTheme.typography.caption,
+    color: MeruTheme.colors.text.tertiary,
+    marginLeft: 4,
   },
   chartContainer: {
     marginBottom: 16,

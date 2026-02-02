@@ -46,6 +46,10 @@ interface KYCState {
   simulateVerification: () => Promise<void>;
   resetKYC: () => void;
   getProgress: () => number;
+
+  // Profile state loaders
+  loadAlexState: () => void;
+  loadMikeState: () => void;
 }
 
 export const useKYCStore = create<KYCState>()(
@@ -117,6 +121,47 @@ export const useKYCStore = create<KYCState>()(
 
         return progress;
       },
+
+      // Load Alan's verified state
+      loadAlexState: () =>
+        set({
+          status: 'verified',
+          personalInfo: {
+            firstName: 'Alan',
+            lastName: 'Swimmer',
+            dateOfBirth: '1990-05-15',
+            address: {
+              street: '123 Mountain View Dr',
+              city: 'San Francisco',
+              state: 'CA',
+              zipCode: '94102',
+              country: 'US',
+            },
+            ssnLast4: '4521',
+          },
+          documents: [
+            {
+              type: 'drivers_license',
+              frontUri: 'demo://alex-license-front',
+              backUri: 'demo://alex-license-back',
+              uploadedAt: '2024-01-15T10:00:00Z',
+            },
+          ],
+          selfieUri: 'demo://alex-selfie',
+          selfieVerified: true,
+          verificationMessage: 'Identity verified successfully',
+        }),
+
+      // Load Mike's fresh/unverified state
+      loadMikeState: () =>
+        set({
+          status: 'none',
+          personalInfo: null,
+          documents: [],
+          selfieUri: null,
+          selfieVerified: false,
+          verificationMessage: null,
+        }),
     }),
     {
       name: 'meru-kyc-v1',

@@ -12,18 +12,20 @@ import {
   Animated,
   Dimensions,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import { MeruTheme, DemoUser, formatCurrency, formatPercent } from '../theme/meru';
+import { MeruTheme, formatCurrency, formatPercent } from '../theme/meru';
 import { formatCryptoQuantity } from '../utils/mockData';
 import { DepositIcon, WithdrawIcon, SwapIcon, SendIcon, BellIcon } from '../components/icons/TabBarIcons';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { useFundingStore } from '../store/fundingStore';
 import { usePortfolioStore } from '../store/portfolioStore';
+import { useUserProfileStore } from '../store/userProfileStore';
 import { useTheme } from '../hooks/useTheme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,7 +34,7 @@ import { PortfolioChart } from '../components/PortfolioChart';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Demo prices for assets
+// Demo prices for crypto assets
 const DEMO_PRICES: Record<string, { price: number; change24h: number }> = {
   BTC: { price: 67234.89, change24h: 2.34 },
   ETH: { price: 3456.78, change24h: -1.23 },
@@ -43,6 +45,19 @@ const DEMO_PRICES: Record<string, { price: number; change24h: number }> = {
   DOGE: { price: 0.1234, change24h: 4.56 },
   XRP: { price: 0.5678, change24h: -2.34 },
   MATIC: { price: 0.89, change24h: 1.23 },
+};
+
+// Demo prices for event contracts (probability-based, 0-1 scale)
+const EVENT_PRICES: Record<string, { probability: number; change24h: number }> = {
+  'FED-RATE-MAR': { probability: 0.42, change24h: 8.5 },
+  'BTC-100K-Q1': { probability: 0.28, change24h: -4.2 },
+  'ETH-ETF-APR': { probability: 0.65, change24h: 12.3 },
+  'AI-BREAKTHROUGH': { probability: 0.55, change24h: 3.1 },
+};
+
+// Check if symbol is an event contract
+const isEventContract = (symbol: string): boolean => {
+  return symbol in EVENT_PRICES || symbol.includes('-') && !symbol.endsWith('-USD');
 };
 
 const CHANGE_24H = 3247.89;
@@ -56,13 +71,61 @@ const QUICK_ACTIONS: { id: string; IconComponent: React.FC<{ size?: number; colo
   { id: 'send', IconComponent: SendIcon, label: 'Send', screen: 'Send' },
 ];
 
+// Mock notifications data
+const NOTIFICATIONS = [
+  {
+    id: '1',
+    type: 'price_alert',
+    title: 'BTC Price Alert',
+    message: 'Bitcoin reached $67,000 - up 2.3% today',
+    time: '2m ago',
+    read: false,
+  },
+  {
+    id: '2',
+    type: 'trade',
+    title: 'Order Filled',
+    message: 'Your buy order for 0.05 ETH was filled at $3,456',
+    time: '1h ago',
+    read: false,
+  },
+  {
+    id: '3',
+    type: 'deposit',
+    title: 'Deposit Complete',
+    message: '$500.00 has been added to your account',
+    time: '3h ago',
+    read: true,
+  },
+  {
+    id: '4',
+    type: 'event',
+    title: 'Event Contract Update',
+    message: 'FED-RATE-MAR probability moved to 42%',
+    time: '5h ago',
+    read: true,
+  },
+  {
+    id: '5',
+    type: 'promo',
+    title: 'Earn Rewards',
+    message: 'Refer a friend and earn $25 in BTC',
+    time: '1d ago',
+    read: true,
+  },
+];
+
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Get dynamic theme colors
   const theme = useTheme();
+
+  // Get current user profile
+  const currentProfile = useUserProfileStore((state) => state.getCurrentProfile());
 
   // Get cash balance from funding store
   const { cashBalance } = useFundingStore();
@@ -72,6 +135,12 @@ export function HomeScreen() {
 
   // Calculate total holdings value using demo prices
   const holdingsValue = holdings.reduce((total, h) => {
+    if (isEventContract(h.symbol)) {
+      // Event contracts: value = quantity * probability * $1 (max payout)
+      const eventInfo = EVENT_PRICES[h.symbol];
+      const probability = eventInfo?.probability || 0.5;
+      return total + h.quantity * probability;
+    }
     const priceInfo = DEMO_PRICES[h.symbol];
     const price = priceInfo?.price || 0;
     return total + h.quantity * price;
@@ -82,6 +151,23 @@ export function HomeScreen() {
 
   // Build assets array from holdings with current prices
   const ASSETS = holdings.map((h) => {
+    const isEvent = isEventContract(h.symbol);
+
+    if (isEvent) {
+      const eventInfo = EVENT_PRICES[h.symbol] || { probability: 0.5, change24h: 0 };
+      return {
+        id: h.symbol,
+        name: h.name,
+        symbol: h.symbol,
+        price: eventInfo.probability, // Store as probability (0-1)
+        change24h: eventInfo.change24h,
+        holdings: h.quantity,
+        value: h.quantity * eventInfo.probability, // Value based on probability
+        color: h.color,
+        isEvent: true,
+      };
+    }
+
     const priceInfo = DEMO_PRICES[h.symbol] || { price: 0, change24h: 0 };
     return {
       id: h.symbol,
@@ -92,6 +178,7 @@ export function HomeScreen() {
       holdings: h.quantity,
       value: h.quantity * priceInfo.price,
       color: h.color,
+      isEvent: false,
     };
   });
 
@@ -187,10 +274,16 @@ export function HomeScreen() {
         >
           <View style={styles.headerLeft}>
             <Text style={[styles.greeting, { color: theme.colors.text.secondary }]}>{getGreeting()},</Text>
-            <Text style={[styles.userName, { color: theme.colors.text.primary }]}>{DemoUser.name}</Text>
+            <Text style={[styles.userName, { color: theme.colors.text.primary }]}>{currentProfile.name}</Text>
           </View>
           <View style={styles.headerRight}>
-            <Pressable style={[styles.notificationButton, { backgroundColor: theme.colors.background.secondary }]}>
+            <Pressable
+              style={[styles.notificationButton, { backgroundColor: theme.colors.background.secondary }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowNotifications(true);
+              }}
+            >
               <View style={[styles.notificationDot, { backgroundColor: theme.colors.accent.primary }]} />
               <BellIcon size={22} color={theme.colors.text.primary} />
             </Pressable>
@@ -208,6 +301,10 @@ export function HomeScreen() {
             currentValue={totalPortfolioValue}
             change24h={CHANGE_24H}
             changePercent24h={CHANGE_PERCENT_24H}
+            holdings={holdings.map(h => ({ symbol: h.symbol, quantity: h.quantity }))}
+            prices={Object.fromEntries(
+              Object.entries(DEMO_PRICES).map(([k, v]) => [k, v.price])
+            )}
           />
         </Animated.View>
 
@@ -272,7 +369,7 @@ export function HomeScreen() {
                 ]}
                 onPress={() =>
                   navigation.navigate('InstrumentDetail' as never, {
-                    instrumentId: `${asset.symbol}-USD`,
+                    instrumentId: asset.isEvent ? asset.symbol : `${asset.symbol}-USD`,
                   } as never)
                 }
               >
@@ -284,13 +381,15 @@ export function HomeScreen() {
                     style={styles.assetIcon}
                   >
                     <Text style={styles.assetIconText}>
-                      {asset.symbol[0]}
+                      {asset.isEvent ? '📊' : asset.symbol[0]}
                     </Text>
                   </LinearGradient>
                   <View style={styles.assetInfo}>
                     <Text style={[styles.assetName, { color: theme.colors.text.primary }]}>{asset.name}</Text>
                     <Text style={[styles.assetHoldings, { color: theme.colors.text.tertiary }]}>
-                      {formatCryptoQuantity(asset.holdings, asset.symbol)} {asset.symbol}
+                      {asset.isEvent
+                        ? `${Math.floor(asset.holdings)} contracts`
+                        : `${formatCryptoQuantity(asset.holdings, asset.symbol)} ${asset.symbol}`}
                     </Text>
                   </View>
                 </View>
@@ -306,7 +405,11 @@ export function HomeScreen() {
                 </View>
 
                 <View style={styles.assetRight}>
-                  <Text style={[styles.assetValue, { color: theme.colors.text.primary }]}>{formatCurrency(asset.value)}</Text>
+                  <Text style={[styles.assetValue, { color: theme.colors.text.primary }]}>
+                    {asset.isEvent
+                      ? `${(asset.price * 100).toFixed(0)}¢`
+                      : formatCurrency(asset.value)}
+                  </Text>
                   <Text
                     style={[
                       styles.assetChange,
@@ -409,6 +512,94 @@ export function HomeScreen() {
         {/* Bottom padding */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Notifications Modal */}
+      <Modal
+        visible={showNotifications}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowNotifications(false)}
+          />
+          <Animated.View style={[styles.notificationsPanel, { backgroundColor: theme.colors.background.elevated, paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.notificationsPanelHeader}>
+              <View style={styles.panelHandle} />
+              <Text style={[styles.notificationsPanelTitle, { color: theme.colors.text.primary }]}>Notifications</Text>
+              <Pressable
+                style={[styles.markAllReadButton, { backgroundColor: theme.colors.background.tertiary }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Text style={[styles.markAllReadText, { color: theme.colors.accent.primary }]}>Mark all read</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
+              {NOTIFICATIONS.map((notification) => (
+                <Pressable
+                  key={notification.id}
+                  style={({ pressed }) => [
+                    styles.notificationItem,
+                    { backgroundColor: pressed ? theme.colors.background.tertiary : 'transparent' },
+                    !notification.read && { backgroundColor: theme.colors.accent.primary + '08' },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowNotifications(false);
+                    // Navigate based on notification type
+                    if (notification.type === 'trade') {
+                      navigation.navigate('Portfolio' as never);
+                    } else if (notification.type === 'deposit') {
+                      navigation.navigate('Deposit' as never);
+                    } else if (notification.type === 'price_alert') {
+                      navigation.navigate('InstrumentDetail' as never, { instrumentId: 'BTC-USD' } as never);
+                    }
+                  }}
+                >
+                  <View style={[
+                    styles.notificationIconContainer,
+                    { backgroundColor: theme.colors.background.secondary },
+                    notification.type === 'price_alert' && { backgroundColor: theme.colors.success.glow },
+                    notification.type === 'trade' && { backgroundColor: theme.colors.accent.primary + '20' },
+                    notification.type === 'deposit' && { backgroundColor: theme.colors.success.glow },
+                    notification.type === 'event' && { backgroundColor: '#f59e0b' + '20' },
+                    notification.type === 'promo' && { backgroundColor: theme.colors.accent.secondary + '20' },
+                  ]}>
+                    <Text style={styles.notificationIcon}>
+                      {notification.type === 'price_alert' && '📈'}
+                      {notification.type === 'trade' && '✓'}
+                      {notification.type === 'deposit' && '💰'}
+                      {notification.type === 'event' && '📊'}
+                      {notification.type === 'promo' && '🎁'}
+                    </Text>
+                  </View>
+                  <View style={styles.notificationContent}>
+                    <View style={styles.notificationTitleRow}>
+                      <Text style={[styles.notificationTitle, { color: theme.colors.text.primary }]} numberOfLines={1}>
+                        {notification.title}
+                      </Text>
+                      {!notification.read && (
+                        <View style={[styles.unreadDot, { backgroundColor: theme.colors.accent.primary }]} />
+                      )}
+                    </View>
+                    <Text style={[styles.notificationMessage, { color: theme.colors.text.secondary }]} numberOfLines={2}>
+                      {notification.message}
+                    </Text>
+                    <Text style={[styles.notificationTime, { color: theme.colors.text.tertiary }]}>
+                      {notification.time}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -648,5 +839,110 @@ const styles = StyleSheet.create({
   moverChange: {
     ...MeruTheme.typography.captionSmall,
     fontWeight: '600',
+  },
+  // Notifications Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  notificationsPanel: {
+    backgroundColor: MeruTheme.colors.background.elevated,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  notificationsPanelHeader: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: MeruTheme.colors.border.subtle,
+  },
+  panelHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: MeruTheme.colors.border.light,
+    marginBottom: 16,
+  },
+  notificationsPanelTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: MeruTheme.colors.text.primary,
+    marginBottom: 12,
+  },
+  markAllReadButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: MeruTheme.colors.background.tertiary,
+  },
+  markAllReadText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: MeruTheme.colors.accent.primary,
+  },
+  notificationsList: {
+    paddingHorizontal: 8,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    marginVertical: 2,
+  },
+  notificationIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  notificationIcon: {
+    fontSize: 20,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notificationTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: MeruTheme.colors.text.primary,
+    flex: 1,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: MeruTheme.colors.accent.primary,
+  },
+  notificationMessage: {
+    fontSize: 14,
+    color: MeruTheme.colors.text.secondary,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: MeruTheme.colors.text.tertiary,
+    marginTop: 6,
   },
 });

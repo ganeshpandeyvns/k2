@@ -47,6 +47,10 @@ interface FundingState {
   simulateDeposit: (amount: number, methodId: string) => Promise<Transaction>;
   simulateWithdraw: (amount: number, methodId: string) => Promise<Transaction>;
   clearPendingDeposit: () => void;
+
+  // Profile state loaders
+  loadAlexState: () => void;
+  loadMikeState: () => void;
 }
 
 const generateReference = () =>
@@ -161,6 +165,54 @@ export const useFundingStore = create<FundingState>()(
 
       clearPendingDeposit: () =>
         set({ pendingDeposit: null }),
+
+      // Load Alex's funded state with linked bank
+      loadAlexState: () =>
+        set({
+          paymentMethods: [
+            {
+              id: 'alex-chase-001',
+              type: 'bank',
+              name: 'Chase',
+              lastFour: '4521',
+              bankId: 'chase',
+              isDefault: true,
+              status: 'verified',
+              accountType: 'checking',
+            },
+          ],
+          transactions: [
+            {
+              id: 'tx_alex_001',
+              type: 'deposit',
+              amount: 5000,
+              status: 'completed',
+              timestamp: '2024-01-10T10:00:00Z',
+              reference: 'REF8X7K2M9N1',
+              methodId: 'alex-chase-001',
+            },
+            {
+              id: 'tx_alex_002',
+              type: 'deposit',
+              amount: 5000,
+              status: 'completed',
+              timestamp: '2024-01-05T14:30:00Z',
+              reference: 'REF3P9Q1R5S7',
+              methodId: 'alex-chase-001',
+            },
+          ],
+          cashBalance: 10000,
+          pendingDeposit: null,
+        }),
+
+      // Load Mike's fresh state - no bank, no funds
+      loadMikeState: () =>
+        set({
+          paymentMethods: [],
+          transactions: [],
+          cashBalance: 0,
+          pendingDeposit: null,
+        }),
     }),
     {
       name: 'meru-funding-v1',
