@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -23,6 +24,17 @@ import { formatCurrency } from '../utils/format';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { usePortfolioStore } from '../store/portfolioStore';
 import { useFundingStore } from '../store/fundingStore';
+import {
+  DEMO_STOCKS,
+  DEMO_STOCK_QUOTES,
+} from '../utils/mockStockData';
+import {
+  getMarketStatus,
+  getSessionColor,
+  getSessionIcon,
+  isExtendedHoursAvailable,
+  getTradingAvailabilityMessage,
+} from '../utils/marketHours';
 
 // Demo prices for when API is unavailable
 const DEMO_PRICES: Record<string, { lastPrice: string; change24h: string }> = {
@@ -63,21 +75,42 @@ export function TradeScreen() {
   const [dollarAmount, setDollarAmount] = useState('');
   const [price, setPrice] = useState('');
   const [eventSide, setEventSide] = useState<EventSide>('yes');
+  const [extendedHours, setExtendedHours] = useState(false);
 
   const { executeBuy, executeSell, getHolding } = usePortfolioStore();
   const { cashBalance, updateCashBalance } = useFundingStore();
 
+  // Detect asset type
   const isEvent = instrumentId.startsWith('KX');
-  const baseAsset = instrumentId.split('-')[0]; // e.g., 'BTC' from 'BTC-USD'
+  const isStock = DEMO_STOCKS.some((s) => s.symbol === instrumentId);
+  const isCrypto = !isEvent && !isStock;
+
+  // Get stock data if it's a stock
+  const stockData = isStock ? DEMO_STOCKS.find((s) => s.symbol === instrumentId) : null;
+  const stockQuote = isStock ? DEMO_STOCK_QUOTES[instrumentId] : null;
+
+  // Get market status for stocks
+  const marketStatus = isStock ? getMarketStatus() : null;
+  const canTradeExtendedHours = isStock && isExtendedHoursAvailable() && stockData?.extendedHoursEnabled;
+  const tradingMessage = isStock ? getTradingAvailabilityMessage() : null;
+
+  const baseAsset = isStock ? instrumentId : instrumentId.split('-')[0]; // Stock symbols are just the symbol, crypto is like 'BTC-USD'
   const currentHolding = getHolding(baseAsset);
 
   const { data: instrument } = useQuery({
     queryKey: ['instrument', instrumentId],
     queryFn: async () => {
       try {
+        // For stocks, return stock data
+        if (isStock && stockData) {
+          return { displayName: stockData.name, baseAsset: stockData.symbol };
+        }
         return await api.getInstrument(instrumentId);
       } catch {
         // Return demo data if API fails
+        if (isStock && stockData) {
+          return { displayName: stockData.name, baseAsset: stockData.symbol };
+        }
         return DEMO_INSTRUMENTS[instrumentId] || { displayName: instrumentId, baseAsset: instrumentId.split('-')[0] };
       }
     },
@@ -87,18 +120,29 @@ export function TradeScreen() {
     queryKey: ['quote', instrumentId],
     queryFn: async () => {
       try {
+        // For stocks, return stock quote data
+        if (isStock && stockQuote) {
+          return { lastPrice: stockQuote.price.toString(), change24h: stockQuote.changePercent.toString() };
+        }
         return await api.getQuote(instrumentId);
       } catch {
         // Return demo prices if API fails
+        if (isStock && stockQuote) {
+          return { lastPrice: stockQuote.price.toString(), change24h: stockQuote.changePercent.toString() };
+        }
         return DEMO_PRICES[instrumentId] || { lastPrice: '100.00', change24h: '0.00' };
       }
     },
-    refetchInterval: 5000, // Reduced frequency for demo mode
+    refetchInterval: isStock ? 10000 : 5000, // Slower refresh for stocks during market hours
   });
 
   const submitOrder = useMutation({
-    mutationFn: async (order: Parameters<typeof api.createOrder>[0]) => {
+    mutationFn: async (order: Parameters<typeof api.createOrder>[0] & { isStock?: boolean; stockOrder?: any }) => {
       try {
+        // Use stock-specific order endpoint for stocks
+        if (order.isStock && order.stockOrder) {
+          return await api.createStockOrder(order.stockOrder);
+        }
         return await api.createOrder(order);
       } catch {
         // Demo mode: simulate successful order
@@ -110,31 +154,40 @@ export function TradeScreen() {
           side: order.side,
           quantity: order.quantity,
           price: order.price || quote?.lastPrice || '0',
+          filledQuantity: parseFloat(order.quantity),
+          averagePrice: parseFloat(order.price || quote?.lastPrice || '0'),
         };
       }
     },
     onSuccess: (data) => {
-      const price = parseFloat(data.price || currentPrice);
-      const qty = parseFloat(data.quantity);
-      const totalCost = qty * price;
+      // Handle stock order response format
+      const filledPrice = data.averagePrice || parseFloat(data.price || currentPrice);
+      const qty = data.filledQuantity || parseFloat(data.quantity);
+      const totalCost = qty * filledPrice;
 
       // Update portfolio and cash balance based on order side
       if (!isEvent) {
-        if (data.side === 'buy') {
-          executeBuy(baseAsset, qty, price, instrument?.displayName);
+        const orderSide = data.side || side;
+        if (orderSide === 'buy') {
+          executeBuy(baseAsset, qty, filledPrice, instrument?.displayName);
           // Deduct USD from cash balance
           updateCashBalance(-totalCost);
         } else {
-          executeSell(baseAsset, qty, price);
+          executeSell(baseAsset, qty, filledPrice);
           // Add USD to cash balance
           updateCashBalance(totalCost);
         }
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Different message for stocks vs crypto
+      const quantityDisplay = isStock ? qty.toFixed(4) : qty.toFixed(6);
+      const assetLabel = isStock ? `shares of ${baseAsset}` : baseAsset;
+
       Alert.alert(
         'Order Filled',
-        `Your ${side} order for ${qty.toFixed(6)} ${baseAsset} at ${formatCurrency(price.toString())} has been filled.\n\nTotal: ${formatCurrency(totalCost.toString())}`,
+        `Your ${side} order for ${quantityDisplay} ${assetLabel} at ${formatCurrency(filledPrice.toString())} has been filled.\n\nTotal: ${formatCurrency(totalCost.toString())}`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     },
@@ -227,14 +280,36 @@ export function TradeScreen() {
 
     const executeOrder = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      submitOrder.mutate({
-        instrument: instrumentId,
-        side,
-        type: orderType,
-        quantity: orderQuantity.toFixed(8),
-        price: orderType === 'limit' ? price : undefined,
-        eventSide: isEvent ? eventSide : undefined,
-      });
+
+      // For stocks, use the stock-specific order format
+      if (isStock) {
+        submitOrder.mutate({
+          instrument: instrumentId,
+          side,
+          type: orderType,
+          quantity: orderQuantity.toFixed(8),
+          isStock: true,
+          stockOrder: {
+            symbol: instrumentId,
+            side,
+            orderType,
+            amountType: inputMode,
+            amount: inputMode === 'dollars' ? parseFloat(dollarAmount) : orderQuantity,
+            limitPrice: orderType === 'limit' ? parseFloat(price) : undefined,
+            extendedHours: extendedHours && canTradeExtendedHours,
+            timeInForce: 'day',
+          },
+        });
+      } else {
+        submitOrder.mutate({
+          instrument: instrumentId,
+          side,
+          type: orderType,
+          quantity: orderQuantity.toFixed(8),
+          price: orderType === 'limit' ? price : undefined,
+          eventSide: isEvent ? eventSide : undefined,
+        });
+      }
     };
 
     // Confirm large transactions (over $1000)
@@ -264,7 +339,7 @@ export function TradeScreen() {
     }
 
     executeOrder();
-  }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder]);
+  }, [quantity, dollarAmount, inputMode, price, orderType, side, eventSide, instrumentId, isEvent, isStock, currentHolding, baseAsset, cashBalance, currentPrice, currentPriceNum, calculatedQuantity, navigation, submitOrder, extendedHours, canTradeExtendedHours]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -284,9 +359,29 @@ export function TradeScreen() {
         </View>
 
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          {/* Market Status Banner for Stocks */}
+          {isStock && marketStatus && (
+            <View style={[styles.marketStatusBanner, { backgroundColor: getSessionColor(marketStatus.session) + '20' }]}>
+              <Text style={styles.marketStatusIcon}>{getSessionIcon(marketStatus.session)}</Text>
+              <View style={styles.marketStatusInfo}>
+                <Text style={[styles.marketStatusText, { color: getSessionColor(marketStatus.session) }]}>
+                  {marketStatus.sessionLabel}
+                </Text>
+                <Text style={styles.marketStatusCountdown}>{marketStatus.countdown}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Instrument Info */}
           <View style={styles.instrumentInfo}>
-            <Text style={styles.instrumentName}>{instrument?.displayName}</Text>
+            <View style={styles.instrumentNameRow}>
+              <Text style={styles.instrumentName}>{instrument?.displayName}</Text>
+              {isStock && stockData && (
+                <View style={styles.exchangeBadge}>
+                  <Text style={styles.exchangeBadgeText}>{stockData.exchange}</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.currentPrice}>{formatCurrency(currentPrice)}</Text>
           </View>
 
@@ -514,11 +609,47 @@ export function TradeScreen() {
             )}
           </View>
 
+          {/* Extended Hours Toggle for Stocks */}
+          {isStock && canTradeExtendedHours && (
+            <View style={styles.extendedHoursContainer}>
+              <View style={styles.extendedHoursInfo}>
+                <Text style={styles.extendedHoursLabel}>Extended Hours Trading</Text>
+                <Text style={styles.extendedHoursSubtext}>
+                  Trade during pre-market and after-hours sessions
+                </Text>
+              </View>
+              <Switch
+                value={extendedHours}
+                onValueChange={setExtendedHours}
+                trackColor={{ false: '#333333', true: '#00D4AA50' }}
+                thumbColor={extendedHours ? '#00D4AA' : '#666666'}
+              />
+            </View>
+          )}
+
+          {/* Extended Hours Warning */}
+          {isStock && extendedHours && (
+            <View style={styles.extendedHoursWarning}>
+              <Text style={styles.extendedHoursWarningText}>
+                Extended hours trading may have lower liquidity and wider spreads. Your order may not fill at the expected price.
+              </Text>
+            </View>
+          )}
+
+          {/* Trading Availability Message for Stocks */}
+          {isStock && tradingMessage && (
+            <View style={styles.tradingMessageContainer}>
+              <Text style={styles.tradingMessageText}>{tradingMessage}</Text>
+            </View>
+          )}
+
           {/* Risk Warning */}
           <View style={styles.warning}>
             <Text style={styles.warningText}>
               {isEvent
                 ? 'Event contracts settle at $1 or $0. You could lose your entire investment.'
+                : isStock
+                ? 'Stock prices are volatile. You could lose money, including your principal investment.'
                 : 'Cryptocurrency prices are volatile. Only trade what you can afford to lose.'}
             </Text>
           </View>
@@ -809,5 +940,92 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Stock-specific styles
+  marketStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  marketStatusIcon: {
+    fontSize: 16,
+  },
+  marketStatusInfo: {
+    flex: 1,
+  },
+  marketStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  marketStatusCountdown: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 2,
+  },
+  instrumentNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  exchangeBadge: {
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  exchangeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#888888',
+  },
+  extendedHoursContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  extendedHoursInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  extendedHoursLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  extendedHoursSubtext: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  extendedHoursWarning: {
+    backgroundColor: 'rgba(240, 180, 41, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  extendedHoursWarningText: {
+    fontSize: 12,
+    color: '#F0B429',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  tradingMessageContainer: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  tradingMessageText: {
+    fontSize: 12,
+    color: '#999999',
+    textAlign: 'center',
   },
 });

@@ -25,12 +25,15 @@ import {
   TrendingIcon,
   SearchIcon,
   FilterIcon,
+  StocksIcon,
 } from '../components/icons/TabBarIcons';
 import { useTheme } from '../hooks/useTheme';
+import { DEMO_STOCKS, DEMO_STOCK_QUOTES, formatMarketCap } from '../utils/mockStockData';
+import { getMarketStatus, getSessionIcon } from '../utils/marketHours';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type TabType = 'crypto' | 'events' | 'trending';
+type TabType = 'crypto' | 'stocks' | 'events' | 'trending';
 
 // Demo market data with more details
 const CRYPTO_MARKETS = [
@@ -58,6 +61,42 @@ const TRENDING = [
   { id: 'RENDER-USD', symbol: 'RENDER', name: 'Render', price: 8.45, change24h: 12.7, volume: '345M', color: '#00d4aa' },
 ];
 
+// Stock market data - derived from mock data
+const STOCK_MARKETS = DEMO_STOCKS.slice(0, 12).map((stock) => {
+  const quote = DEMO_STOCK_QUOTES[stock.symbol];
+  return {
+    id: `STOCK-${stock.symbol}`,
+    symbol: stock.symbol,
+    name: stock.name,
+    price: quote?.price || 100,
+    change24h: quote?.changePercent || 0,
+    volume: formatMarketCap(quote?.volume || 0),
+    marketCap: formatMarketCap(quote?.marketCap || 0),
+    exchange: stock.exchange,
+    color: getStockColor(stock.symbol),
+    type: 'stock' as const,
+  };
+});
+
+// Get a consistent color for each stock based on sector/symbol
+function getStockColor(symbol: string): string {
+  const colors: Record<string, string> = {
+    AAPL: '#555555',
+    MSFT: '#00a4ef',
+    GOOGL: '#4285f4',
+    AMZN: '#ff9900',
+    META: '#0084ff',
+    NVDA: '#76b900',
+    TSLA: '#cc0000',
+    JPM: '#0a66c2',
+    BAC: '#e31837',
+    V: '#1a1f71',
+    MA: '#ff5f00',
+    JNJ: '#d51900',
+  };
+  return colors[symbol] || '#6366f1';
+}
+
 export function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -75,7 +114,7 @@ export function MarketsScreen() {
   useEffect(() => {
     // Generate chart data for all markets
     const data: Record<string, number[]> = {};
-    [...CRYPTO_MARKETS, ...EVENT_MARKETS, ...TRENDING].forEach((market) => {
+    [...CRYPTO_MARKETS, ...EVENT_MARKETS, ...TRENDING, ...STOCK_MARKETS].forEach((market) => {
       const trend = market.change24h > 0 ? 'up' : market.change24h < 0 ? 'down' : 'neutral';
       data[market.id] = generateChartData(market.price, 0.02, 24, trend);
     });
@@ -97,10 +136,15 @@ export function MarketsScreen() {
     ]).start();
   }, []);
 
+  // Market status for stocks
+  const marketStatus = getMarketStatus();
+
   const getMarkets = () => {
     switch (activeTab) {
       case 'crypto':
         return CRYPTO_MARKETS;
+      case 'stocks':
+        return STOCK_MARKETS;
       case 'events':
         return EVENT_MARKETS;
       case 'trending':
@@ -121,6 +165,10 @@ export function MarketsScreen() {
 
   const renderMarketItem = ({ item, index }: { item: any; index: number }) => {
     const isEvent = activeTab === 'events';
+    const isStock = activeTab === 'stocks';
+
+    // For stocks, navigate with the symbol directly
+    const instrumentId = isStock ? item.symbol : item.id;
 
     return (
       <Animated.View
@@ -144,7 +192,8 @@ export function MarketsScreen() {
           ]}
           onPress={() =>
             navigation.navigate('InstrumentDetail' as never, {
-              instrumentId: item.id,
+              instrumentId,
+              assetType: isStock ? 'stock' : isEvent ? 'event' : 'crypto',
             } as never)
           }
         >
@@ -156,7 +205,16 @@ export function MarketsScreen() {
               </Text>
             </View>
             <View style={styles.marketInfo}>
-              <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+              <View style={styles.symbolRow}>
+                <Text style={[styles.marketSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+                {isStock && (
+                  <View style={[styles.exchangeBadge, { backgroundColor: theme.colors.background.elevated }]}>
+                    <Text style={[styles.exchangeText, { color: theme.colors.text.tertiary }]}>
+                      {item.exchange}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.marketName, { color: theme.colors.text.tertiary }]} numberOfLines={1}>
                 {item.name}
               </Text>
@@ -212,6 +270,7 @@ export function MarketsScreen() {
 
   const tabs: { id: TabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
     { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
+    { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon },
     { id: 'events', label: 'Events', IconComponent: EventsIcon },
     { id: 'trending', label: 'Trending', IconComponent: TrendingIcon },
   ];
@@ -313,22 +372,45 @@ export function MarketsScreen() {
 
       {/* Market Stats Bar */}
       <View style={[styles.statsBar, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>24h Volume</Text>
-          <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>$89.4B</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>BTC Dom</Text>
-          <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>52.3%</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Fear/Greed</Text>
-          <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>
-            74 Greed
-          </Text>
-        </View>
+        {activeTab === 'stocks' ? (
+          <>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Market</Text>
+              <Text style={[styles.statValue, { color: marketStatus.session === 'regular' ? theme.colors.success.primary : theme.colors.text.muted }]}>
+                {getSessionIcon(marketStatus.session)} {marketStatus.sessionLabel}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>S&P 500</Text>
+              <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>+0.85%</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>NASDAQ</Text>
+              <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>+1.23%</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>24h Volume</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>$89.4B</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>BTC Dom</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>52.3%</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Fear/Greed</Text>
+              <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>
+                74 Greed
+              </Text>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Market List */}
@@ -515,9 +597,25 @@ const styles = StyleSheet.create({
   marketInfo: {
     flex: 1,
   },
+  symbolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   marketSymbol: {
     ...MeruTheme.typography.bodyMedium,
     color: MeruTheme.colors.text.primary,
+  },
+  exchangeBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    backgroundColor: MeruTheme.colors.background.elevated,
+  },
+  exchangeText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: MeruTheme.colors.text.tertiary,
   },
   marketName: {
     ...MeruTheme.typography.caption,

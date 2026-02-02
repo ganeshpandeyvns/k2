@@ -414,6 +414,43 @@ export const TrendingIcon: React.FC<IconProps> = ({
   );
 };
 
+// Stocks Icon - Bar chart / candlestick style
+export const StocksIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          {/* Candlestick bars */}
+          <Rect x="4" y="8" width="4" height="10" rx="1" fill={activeColor} />
+          <Rect x="10" y="4" width="4" height="14" rx="1" fill={activeColor} />
+          <Rect x="16" y="10" width="4" height="8" rx="1" fill={activeColor} />
+          {/* Wicks */}
+          <Path d="M6 6V8M6 18V20" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M12 2V4M12 18V22" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M18 8V10M18 18V20" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+        </G>
+      ) : (
+        <G>
+          {/* Candlestick bars outline */}
+          <Rect x="4" y="8" width="4" height="10" rx="1" stroke={activeColor} strokeWidth={1.5} />
+          <Rect x="10" y="4" width="4" height="14" rx="1" stroke={activeColor} strokeWidth={1.5} />
+          <Rect x="16" y="10" width="4" height="8" rx="1" stroke={activeColor} strokeWidth={1.5} />
+          {/* Wicks */}
+          <Path d="M6 6V8M6 18V20" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M12 2V4M12 18V22" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M18 8V10M18 18V20" stroke={activeColor} strokeWidth={1.5} strokeLinecap="round" />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
 // Search Icon - Clean magnifying glass
 export const SearchIcon: React.FC<IconProps> = ({
   size = 18,

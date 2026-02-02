@@ -45,12 +45,14 @@ import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { OnboardingSuccessScreen } from '../screens/onboarding/OnboardingSuccessScreen';
 
 // Types
+export type AssetType = 'crypto' | 'stock' | 'event';
+
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Main: undefined;
-  InstrumentDetail: { instrumentId: string };
-  Trade: { instrumentId: string; side?: 'buy' | 'sell' };
+  InstrumentDetail: { instrumentId: string; assetType?: AssetType };
+  Trade: { instrumentId: string; side?: 'buy' | 'sell'; assetType?: AssetType };
   OrderConfirm: { orderId: string };
   // Funding
   Deposit: undefined;

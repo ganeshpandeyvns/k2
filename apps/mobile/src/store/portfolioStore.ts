@@ -6,12 +6,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type AssetType = 'crypto' | 'stock' | 'event';
+
 export interface Holding {
   symbol: string;
   name: string;
   quantity: number;
   avgCost: number; // Average cost basis per unit
   color: string;
+  assetType?: AssetType; // Optional for backwards compatibility
 }
 
 export interface TradeTransaction {
@@ -68,18 +71,54 @@ const generateTxId = () =>
   `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // Asset metadata for new assets
-const ASSET_META: Record<string, { name: string; color: string }> = {
-  BTC: { name: 'Bitcoin', color: '#f7931a' },
-  ETH: { name: 'Ethereum', color: '#627eea' },
-  SOL: { name: 'Solana', color: '#00ffa3' },
-  AVAX: { name: 'Avalanche', color: '#e84142' },
-  USDC: { name: 'USD Coin', color: '#2775ca' },
-  USDT: { name: 'Tether', color: '#26a17b' },
-  DOGE: { name: 'Dogecoin', color: '#c3a634' },
-  XRP: { name: 'XRP', color: '#00aae4' },
-  MATIC: { name: 'Polygon', color: '#8247e5' },
-  DOT: { name: 'Polkadot', color: '#e6007a' },
-  ADA: { name: 'Cardano', color: '#0d1e30' },
+const ASSET_META: Record<string, { name: string; color: string; assetType?: AssetType }> = {
+  // Crypto
+  BTC: { name: 'Bitcoin', color: '#f7931a', assetType: 'crypto' },
+  ETH: { name: 'Ethereum', color: '#627eea', assetType: 'crypto' },
+  SOL: { name: 'Solana', color: '#00ffa3', assetType: 'crypto' },
+  AVAX: { name: 'Avalanche', color: '#e84142', assetType: 'crypto' },
+  USDC: { name: 'USD Coin', color: '#2775ca', assetType: 'crypto' },
+  USDT: { name: 'Tether', color: '#26a17b', assetType: 'crypto' },
+  DOGE: { name: 'Dogecoin', color: '#c3a634', assetType: 'crypto' },
+  XRP: { name: 'XRP', color: '#00aae4', assetType: 'crypto' },
+  MATIC: { name: 'Polygon', color: '#8247e5', assetType: 'crypto' },
+  DOT: { name: 'Polkadot', color: '#e6007a', assetType: 'crypto' },
+  ADA: { name: 'Cardano', color: '#0d1e30', assetType: 'crypto' },
+
+  // Stocks - Popular Tech
+  AAPL: { name: 'Apple Inc.', color: '#A2AAAD', assetType: 'stock' },
+  GOOGL: { name: 'Alphabet Inc.', color: '#4285F4', assetType: 'stock' },
+  MSFT: { name: 'Microsoft Corp.', color: '#00A4EF', assetType: 'stock' },
+  AMZN: { name: 'Amazon.com Inc.', color: '#FF9900', assetType: 'stock' },
+  NVDA: { name: 'NVIDIA Corp.', color: '#76B900', assetType: 'stock' },
+  META: { name: 'Meta Platforms Inc.', color: '#0081FB', assetType: 'stock' },
+  TSLA: { name: 'Tesla Inc.', color: '#CC0000', assetType: 'stock' },
+  AMD: { name: 'AMD Inc.', color: '#ED1C24', assetType: 'stock' },
+  INTC: { name: 'Intel Corp.', color: '#0071C5', assetType: 'stock' },
+  CRM: { name: 'Salesforce Inc.', color: '#00A1E0', assetType: 'stock' },
+
+  // Stocks - Finance
+  JPM: { name: 'JPMorgan Chase', color: '#117ACA', assetType: 'stock' },
+  BAC: { name: 'Bank of America', color: '#012169', assetType: 'stock' },
+  V: { name: 'Visa Inc.', color: '#1A1F71', assetType: 'stock' },
+  MA: { name: 'Mastercard Inc.', color: '#EB001B', assetType: 'stock' },
+  GS: { name: 'Goldman Sachs', color: '#6CACE4', assetType: 'stock' },
+
+  // Stocks - Healthcare
+  JNJ: { name: 'Johnson & Johnson', color: '#D51900', assetType: 'stock' },
+  PFE: { name: 'Pfizer Inc.', color: '#0093D0', assetType: 'stock' },
+  UNH: { name: 'UnitedHealth Group', color: '#002677', assetType: 'stock' },
+
+  // Stocks - Consumer
+  KO: { name: 'Coca-Cola Co.', color: '#F40009', assetType: 'stock' },
+  PEP: { name: 'PepsiCo Inc.', color: '#004B93', assetType: 'stock' },
+  MCD: { name: 'McDonald\'s Corp.', color: '#FFC72C', assetType: 'stock' },
+  NKE: { name: 'Nike Inc.', color: '#111111', assetType: 'stock' },
+  DIS: { name: 'Walt Disney Co.', color: '#113CCF', assetType: 'stock' },
+
+  // Stocks - Energy
+  XOM: { name: 'Exxon Mobil', color: '#ED1C24', assetType: 'stock' },
+  CVX: { name: 'Chevron Corp.', color: '#0066B2', assetType: 'stock' },
 };
 
 export const usePortfolioStore = create<PortfolioState>()(
@@ -134,6 +173,7 @@ export const usePortfolioStore = create<PortfolioState>()(
             quantity,
             avgCost: price,
             color: color || meta.color,
+            assetType: meta.assetType || 'crypto',
           });
         }
 
@@ -324,18 +364,25 @@ export const usePortfolioStore = create<PortfolioState>()(
           transactions: [],
         }),
 
-      // Load Alex's portfolio state with holdings
+      // Load Alex's portfolio state with holdings (crypto, stocks, events)
       loadAlexState: () =>
         set({
           holdings: [
-            { symbol: 'BTC', name: 'Bitcoin', quantity: 1.234, avgCost: 58000, color: '#f7931a' },
-            { symbol: 'ETH', name: 'Ethereum', quantity: 8.5, avgCost: 3200, color: '#627eea' },
-            { symbol: 'SOL', name: 'Solana', quantity: 45.2, avgCost: 155, color: '#00ffa3' },
-            { symbol: 'AVAX', name: 'Avalanche', quantity: 120, avgCost: 38, color: '#e84142' },
-            { symbol: 'FED-RATE-MAR', name: 'Fed Rate Cut - Mar', quantity: 50, avgCost: 0.35, color: '#f0b429' },
-            { symbol: 'BTC-100K-Q1', name: 'BTC $100K Q1', quantity: 25, avgCost: 0.22, color: '#f7931a' },
+            // Crypto holdings
+            { symbol: 'BTC', name: 'Bitcoin', quantity: 1.234, avgCost: 58000, color: '#f7931a', assetType: 'crypto' },
+            { symbol: 'ETH', name: 'Ethereum', quantity: 8.5, avgCost: 3200, color: '#627eea', assetType: 'crypto' },
+            { symbol: 'SOL', name: 'Solana', quantity: 45.2, avgCost: 155, color: '#00ffa3', assetType: 'crypto' },
+            { symbol: 'AVAX', name: 'Avalanche', quantity: 120, avgCost: 38, color: '#e84142', assetType: 'crypto' },
+            // Stock holdings
+            { symbol: 'AAPL', name: 'Apple Inc.', quantity: 25, avgCost: 175, color: '#A2AAAD', assetType: 'stock' },
+            { symbol: 'NVDA', name: 'NVIDIA Corp.', quantity: 10, avgCost: 450, color: '#76B900', assetType: 'stock' },
+            { symbol: 'TSLA', name: 'Tesla Inc.', quantity: 15, avgCost: 220, color: '#CC0000', assetType: 'stock' },
+            // Event contract holdings
+            { symbol: 'FED-RATE-MAR', name: 'Fed Rate Cut - Mar', quantity: 50, avgCost: 0.35, color: '#f0b429', assetType: 'event' },
+            { symbol: 'BTC-100K-Q1', name: 'BTC $100K Q1', quantity: 25, avgCost: 0.22, color: '#f7931a', assetType: 'event' },
           ],
           transactions: [
+            // Crypto transactions
             {
               id: 'tx_alex_trade_001',
               type: 'buy',
@@ -364,6 +411,37 @@ export const usePortfolioStore = create<PortfolioState>()(
               price: 165,
               total: 3300,
               timestamp: '2024-01-15T09:00:00Z',
+              status: 'completed',
+            },
+            // Stock transactions
+            {
+              id: 'tx_alex_stock_001',
+              type: 'buy',
+              asset: 'AAPL',
+              quantity: 25,
+              price: 175,
+              total: 4375,
+              timestamp: '2024-01-10T11:00:00Z',
+              status: 'completed',
+            },
+            {
+              id: 'tx_alex_stock_002',
+              type: 'buy',
+              asset: 'NVDA',
+              quantity: 10,
+              price: 450,
+              total: 4500,
+              timestamp: '2024-01-08T14:30:00Z',
+              status: 'completed',
+            },
+            {
+              id: 'tx_alex_stock_003',
+              type: 'buy',
+              asset: 'TSLA',
+              quantity: 15,
+              price: 220,
+              total: 3300,
+              timestamp: '2024-01-05T10:15:00Z',
               status: 'completed',
             },
           ],

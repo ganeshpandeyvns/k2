@@ -24,6 +24,14 @@ import { useKYCStore } from '../store/kycStore';
 import { useFundingStore } from '../store/fundingStore';
 import { SetupGateModal } from '../components/onboarding/SetupGateModal';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import {
+  DEMO_STOCKS,
+  DEMO_STOCK_QUOTES,
+  STOCK_COMPANY_INFO,
+  formatMarketCap,
+  formatVolume,
+} from '../utils/mockStockData';
+import { getMarketStatus, getSessionColor, getSessionIcon } from '../utils/marketHours';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_HEIGHT = 200;
@@ -260,15 +268,25 @@ export function InstrumentDetailScreen() {
     } as never);
   };
 
-  // Check if it's an event contract (starts with KX or matches event IDs)
+  // Determine asset type
   const isEvent = instrumentId.startsWith('KX') || EVENT_CONTRACT_INFO[instrumentId] !== undefined;
+  const isStock = DEMO_STOCKS.some((s) => s.symbol === instrumentId);
+  const isCrypto = !isEvent && !isStock;
 
   // Get event info from our local data if available
   const eventInfo = EVENT_CONTRACT_INFO[instrumentId];
 
+  // Get stock data if it's a stock
+  const stockData = isStock ? DEMO_STOCKS.find((s) => s.symbol === instrumentId) : null;
+  const stockQuote = isStock ? DEMO_STOCK_QUOTES[instrumentId] : null;
+  const stockCompanyInfo = isStock ? STOCK_COMPANY_INFO[instrumentId] : null;
+
+  // Get market status for stocks
+  const marketStatus = isStock ? getMarketStatus() : null;
+
   // Get crypto info for the base asset
-  const baseAsset = instrumentId.split('-')[0];
-  const cryptoInfo = CRYPTO_INFO[baseAsset];
+  const baseAsset = isStock ? instrumentId : instrumentId.split('-')[0];
+  const cryptoInfo = isCrypto ? CRYPTO_INFO[baseAsset] : null;
 
   // Get transaction history from portfolio store
   const { transactions } = usePortfolioStore();
@@ -354,17 +372,27 @@ export function InstrumentDetailScreen() {
   // Get demo price data for fallback
   const demoPrice = isEvent
     ? EVENT_DEMO_PRICES[instrumentId]
+    : isStock
+    ? stockQuote
     : DEMO_PRICES[baseAsset];
 
   // Calculate current price - use API data if available, otherwise demo prices
   const apiPrice = parseFloat(quote?.lastPrice || '0');
-  const currentPrice = apiPrice > 0 ? apiPrice : (isEvent
-    ? (demoPrice as { probability: number; change24h: number })?.probability || 0.5
-    : (demoPrice as { price: number; change24h: number })?.price || 100);
+  const currentPrice = apiPrice > 0 ? apiPrice : (
+    isEvent
+      ? (demoPrice as { probability: number; change24h: number })?.probability || 0.5
+      : isStock
+      ? stockQuote?.price || 100
+      : (demoPrice as { price: number; change24h: number })?.price || 100
+  );
 
   // Calculate change - use API data if available, otherwise demo prices
   const apiChange = parseFloat(quote?.changePercent24h || quote?.change24h || '0');
-  const change = apiChange !== 0 ? apiChange : (demoPrice?.change24h || 0);
+  const change = apiChange !== 0 ? apiChange : (
+    isStock
+      ? (stockQuote?.changePercent || 0)
+      : (demoPrice as { change24h?: number } | null)?.change24h || 0
+  );
   const isPositive = change >= 0;
 
   // Generate chart data
@@ -437,9 +465,29 @@ export function InstrumentDetailScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Market Status Banner for Stocks */}
+        {isStock && marketStatus && (
+          <View style={[styles.marketStatusBanner, { backgroundColor: getSessionColor(marketStatus.session) + '20' }]}>
+            <Text style={[styles.marketStatusIcon]}>{getSessionIcon(marketStatus.session)}</Text>
+            <Text style={[styles.marketStatusText, { color: getSessionColor(marketStatus.session) }]}>
+              {marketStatus.sessionLabel}
+            </Text>
+            <Text style={styles.marketStatusCountdown}>{marketStatus.countdown}</Text>
+          </View>
+        )}
+
         {/* Price Section */}
         <View style={styles.priceSection}>
-          <Text style={styles.instrumentName}>{instrument?.displayName || instrumentId}</Text>
+          <View style={styles.instrumentHeader}>
+            <Text style={styles.instrumentName}>
+              {isStock ? stockData?.name : instrument?.displayName || instrumentId}
+            </Text>
+            {isStock && stockData && (
+              <View style={styles.exchangeBadge}>
+                <Text style={styles.exchangeBadgeText}>{stockData.exchange}</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.price}>
             {isEvent
               ? `${(currentPrice * 100).toFixed(0)}¢`
@@ -450,6 +498,11 @@ export function InstrumentDetailScreen() {
               {isPositive ? '+' : ''}{formatPercent(change.toString())}
             </Text>
             <Text style={styles.changeLabel}>24h</Text>
+            {isStock && stockQuote && (
+              <Text style={[styles.changeDollar, isPositive ? styles.positive : styles.negative]}>
+                ({isPositive ? '+' : ''}{formatCurrency(stockQuote.change)})
+              </Text>
+            )}
           </View>
         </View>
 
@@ -613,37 +666,106 @@ export function InstrumentDetailScreen() {
           </View>
         )}
 
-        {/* Stats */}
-        <View style={styles.stats}>
-          <View style={styles.statRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>24h High</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(parseFloat(quote?.high24h || '0') || currentPrice * 1.02)}
-              </Text>
+        {/* Stats - Different for stocks vs crypto/events */}
+        {isStock && stockQuote ? (
+          <View style={styles.stats}>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Open</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.open)}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Prev Close</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.previousClose)}</Text>
+              </View>
             </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>24h Low</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(parseFloat(quote?.low24h || '0') || currentPrice * 0.98)}
-              </Text>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Day High</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.high)}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Day Low</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.low)}</Text>
+              </View>
+            </View>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>52W High</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.high52w)}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>52W Low</Text>
+                <Text style={styles.statValue}>{formatCurrency(stockQuote.low52w)}</Text>
+              </View>
+            </View>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Market Cap</Text>
+                <Text style={styles.statValue}>{formatMarketCap(stockQuote.marketCap)}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>P/E Ratio</Text>
+                <Text style={styles.statValue}>
+                  {stockQuote.peRatio ? stockQuote.peRatio.toFixed(2) : 'N/A'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Volume</Text>
+                <Text style={styles.statValue}>{formatVolume(stockQuote.volume)}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Avg Volume</Text>
+                <Text style={styles.statValue}>{formatVolume(stockQuote.avgVolume)}</Text>
+              </View>
+            </View>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Dividend Yield</Text>
+                <Text style={styles.statValue}>
+                  {stockQuote.dividendYield ? `${stockQuote.dividendYield.toFixed(2)}%` : 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Beta</Text>
+                <Text style={styles.statValue}>{stockQuote.beta.toFixed(2)}</Text>
+              </View>
             </View>
           </View>
-          <View style={styles.statRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>24h Volume</Text>
-              <Text style={styles.statValue}>
-                {quote?.volume24h || (isEvent ? '1.2M contracts' : '$24.5M')}
-              </Text>
+        ) : (
+          <View style={styles.stats}>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>24h High</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(parseFloat(quote?.high24h || '0') || currentPrice * 1.02)}
+                </Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>24h Low</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(parseFloat(quote?.low24h || '0') || currentPrice * 0.98)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>Bid / Ask</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(parseFloat(quote?.bidPrice || '0') || currentPrice * 0.999)} / {formatCurrency(parseFloat(quote?.askPrice || '0') || currentPrice * 1.001)}
-              </Text>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>24h Volume</Text>
+                <Text style={styles.statValue}>
+                  {quote?.volume24h || (isEvent ? '1.2M contracts' : '$24.5M')}
+                </Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>Bid / Ask</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(parseFloat(quote?.bidPrice || '0') || currentPrice * 0.999)} / {formatCurrency(parseFloat(quote?.askPrice || '0') || currentPrice * 1.001)}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Your Position */}
         {position && (
@@ -679,12 +801,15 @@ export function InstrumentDetailScreen() {
         {/* About Section */}
         <View style={styles.about}>
           <Text style={styles.aboutTitle}>
-            About {isEvent ? 'This Contract' : (cryptoInfo?.name || instrument?.baseAsset || baseAsset)}
+            About {isEvent ? 'This Contract' : isStock ? stockData?.name : (cryptoInfo?.name || instrument?.baseAsset || baseAsset)}
           </Text>
           <Text style={styles.aboutText}>
             {isEvent
               ? (eventInfo?.description ||
                  'This is a binary event contract. It pays $1 if the event occurs and $0 if it does not. Trade based on your prediction of the outcome.')
+              : isStock
+              ? (stockCompanyInfo?.description ||
+                 `${stockData?.name} (${instrumentId}) is a publicly traded company on the ${stockData?.exchange}. Stock trading involves risk. Only trade with funds you can afford to lose.`)
               : (cryptoInfo?.description ||
                  `${instrument?.baseAsset || baseAsset} is a cryptocurrency that can be traded on supported exchanges. Trading involves risk. Only trade with funds you can afford to lose.`)}
           </Text>
@@ -842,14 +967,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 120,
   },
+  // Market Status Banner (for stocks)
+  marketStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  marketStatusIcon: {
+    fontSize: 14,
+  },
+  marketStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  marketStatusCountdown: {
+    fontSize: 12,
+    color: '#999999',
+  },
   priceSection: {
     alignItems: 'center',
     marginBottom: 24,
   },
+  instrumentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   instrumentName: {
     fontSize: 16,
     color: '#666666',
-    marginBottom: 8,
+  },
+  exchangeBadge: {
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  exchangeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#888888',
+  },
+  changeDollar: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   price: {
     fontSize: 48,
