@@ -9,6 +9,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
+    "test:regression": "node regression/run-regression.js",
+    "test:regression:all": "node regression/run-regression.js --all",
+    "test:regression:commit": "node regression/run-regression.js --commit",
+    "test:regression:watch": "node regression/run-regression.js --watch",
+    "test:coverage": "jest --coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "clean": "rm -rf node_modules .expo dist"
   },

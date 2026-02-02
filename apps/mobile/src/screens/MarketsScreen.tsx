@@ -12,6 +12,7 @@ import {
   TextInput,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -51,6 +52,9 @@ import {
 } from '../utils/mockPrivateStockData';
 import { usePrivateAccessStore, getUnlockedCount, getTotalListingsCount } from '../store/privateAccessStore';
 import { InviteCodeModal } from '../components/InviteCodeModal';
+import { useUserProfileStore } from '../store/userProfileStore';
+import { useKYCStore } from '../store/kycStore';
+import { useFundingStore } from '../store/fundingStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -166,6 +170,36 @@ export function MarketsScreen() {
   // Private access store for invite codes
   const { unlockedListingIds, getUnlockedListings, getLockedListings } = usePrivateAccessStore();
 
+  // Get current user profile for access control
+  const currentProfile = useUserProfileStore((state) => state.getCurrentProfile());
+  const isNewUser = currentProfile.id === 'demo-mike' || !currentProfile.isVerified;
+
+  // Get KYC and funding status for onboarding checks
+  const kycStatus = useKYCStore((state) => state.status);
+  const paymentMethods = useFundingStore((state) => state.paymentMethods);
+  const hasKYC = kycStatus === 'verified';
+  const hasBankLinked = paymentMethods.length > 0;
+
+  // Check if user needs onboarding for private assets
+  const checkPrivateAssetAccess = (): boolean => {
+    if (!hasKYC || !hasBankLinked) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Complete Onboarding',
+        'Please complete identity verification and link a bank account to access private investments.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to Settings',
+            onPress: () => navigation.navigate('Settings' as never),
+          },
+        ]
+      );
+      return false;
+    }
+    return true;
+  };
+
   const getMarkets = () => {
     switch (activeTab) {
       case 'crypto':
@@ -221,11 +255,12 @@ export function MarketsScreen() {
             { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
             pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
           ]}
-          onPress={() =>
+          onPress={() => {
+            if (!checkPrivateAssetAccess()) return;
             navigation.navigate('PrivateStockDetail' as never, {
               symbol: item.symbol,
-            } as never)
-          }
+            } as never);
+          }}
         >
           {/* Top Row: Icon, Name, Valuation */}
           <View style={styles.privateTopRow}>
@@ -345,11 +380,12 @@ export function MarketsScreen() {
             { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
             pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
           ]}
-          onPress={() =>
+          onPress={() => {
+            if (!checkPrivateAssetAccess()) return;
             navigation.navigate('ATSTokenDetail' as never, {
               symbol: item.symbol,
-            } as never)
-          }
+            } as never);
+          }}
         >
           <View style={styles.atsTopRow}>
             <View style={styles.atsLeft}>
@@ -397,7 +433,8 @@ export function MarketsScreen() {
 
   // Render Private Listing item (with locked/unlocked state)
   const renderPrivateListingItem = ({ item, index }: { item: PrivateListing; index: number }) => {
-    const isUnlocked = unlockedListingIds.includes(item.id);
+    // For new users (Mike), always show as locked regardless of invite codes
+    const isUnlocked = isNewUser ? false : unlockedListingIds.includes(item.id);
     const daysLeft = getDaysUntilClose(item.closingDate);
     const progressPercent = (item.amountRaised / item.targetRaise) * 100;
     const statusColor = getDealStatusColor(item.status);
@@ -425,6 +462,7 @@ export function MarketsScreen() {
           ]}
           onPress={() => {
             if (isUnlocked) {
+              if (!checkPrivateAssetAccess()) return;
               navigation.navigate('PrivateListingDetail' as never, { id: item.id } as never);
             } else {
               // Show invite code modal
@@ -799,7 +837,7 @@ export function MarketsScreen() {
                 { color: theme.colors.text.tertiary },
                 privateSubTab === 'private-listing' && { color: theme.colors.accent.primary, fontWeight: '600' },
               ]}>
-                {unlockedListingIds.length > 0 ? 'Private' : 'Private 🔒'}
+                {(unlockedListingIds.length > 0 && !isNewUser) ? 'Private' : 'Private 🔒'}
               </Text>
             </Pressable>
           </View>
@@ -852,14 +890,14 @@ export function MarketsScreen() {
               <View style={styles.statItem}>
                 <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Deals</Text>
                 <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
-                  {unlockedListingIds.length}/{PRIVATE_LISTINGS.length}
+                  {isNewUser ? 0 : unlockedListingIds.length}/{PRIVATE_LISTINGS.length}
                 </Text>
               </View>
               <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
               <View style={styles.statItem}>
                 <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Access</Text>
-                <Text style={[styles.statValue, { color: unlockedListingIds.length > 0 ? theme.colors.success.primary : theme.colors.text.muted }]}>
-                  {unlockedListingIds.length > 0 ? 'Unlocked' : 'Invite Only'}
+                <Text style={[styles.statValue, { color: (unlockedListingIds.length > 0 && !isNewUser) ? theme.colors.success.primary : theme.colors.text.muted }]}>
+                  {(unlockedListingIds.length > 0 && !isNewUser) ? 'Unlocked' : 'Invite Only'}
                 </Text>
               </View>
               <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />

@@ -1,0 +1,52 @@
+{
+  "version": "1.0.0",
+  "description": "Regression test configuration - maps source files to their tests",
+  "alwaysRun": [
+    "__tests__/utils/validation.test.ts",
+    "__tests__/utils/trading.test.ts"
+  ],
+  "criticalPaths": [
+    "src/store/portfolioStore.ts",
+    "src/store/fundingStore.ts",
+    "src/store/walletStore.ts",
+    "src/store/kycStore.ts",
+    "src/store/privateAccessStore.ts",
+    "src/store/userProfileStore.ts",
+    "src/utils/trading.ts",
+    "src/utils/validation.ts",
+    "src/screens/MarketsScreen.tsx"
+  ],
+  "fileToTestMap": {
+    "src/store/portfolioStore.ts": ["__tests__/store/portfolioStore.test.ts"],
+    "src/store/fundingStore.ts": ["__tests__/store/fundingStore.test.ts"],
+    "src/store/walletStore.ts": ["__tests__/store/walletStore.test.ts"],
+    "src/store/kycStore.ts": ["__tests__/store/kycStore.test.ts"],
+    "src/store/privateAccessStore.ts": ["__tests__/store/privateAccessStore.test.ts"],
+    "src/store/userProfileStore.ts": ["__tests__/store/userProfileStore.test.ts"],
+    "src/utils/trading.ts": ["__tests__/utils/trading.test.ts"],
+    "src/utils/validation.ts": ["__tests__/utils/validation.test.ts"],
+    "src/utils/format.ts": ["__tests__/utils/format.test.ts"],
+    "src/screens/MarketsScreen.tsx": [
+      "__tests__/store/privateAccessStore.test.ts",
+      "__tests__/store/userProfileStore.test.ts",
+      "__tests__/store/kycStore.test.ts"
+    ],
+    "src/screens/TradeScreen.tsx": ["__tests__/screens/TradeScreen.test.ts"],
+    "src/screens/HomeScreen.tsx": ["__tests__/screens/HomeScreen.test.ts"]
+  },
+  "patternToTestMap": {
+    "src/store/*.ts": ["__tests__/store/*.test.ts"],
+    "src/utils/*.ts": ["__tests__/utils/*.test.ts"],
+    "src/screens/*.tsx": ["__tests__/screens/*.test.ts"],
+    "src/components/*.tsx": ["__tests__/components/*.test.ts"]
+  },
+  "excludeFromTests": [
+    "*.md",
+    "*.json",
+    "*.lock",
+    ".env*",
+    "docs/*"
+  ],
+  "testTimeout": 120000,
+  "maxParallel": 4
+}

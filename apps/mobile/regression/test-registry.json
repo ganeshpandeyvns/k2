@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "file": "apps/mobile/package.json",
+      "addedAt": "2026-02-02T17:01:19.093Z",
+      "lastTested": "2026-02-02T17:01:19.093Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/src/screens/MarketsScreen.tsx",
+      "addedAt": "2026-02-02T17:01:19.093Z",
+      "lastTested": "2026-02-02T17:01:19.093Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/store/privateAccessStore.test.ts",
+        "__tests__/store/userProfileStore.test.ts",
+        "__tests__/store/kycStore.test.ts",
+        "__tests__/screens/MarketsScreen.test.ts"
+      ]
+    }
+  ],
+  "lastUpdated": "2026-02-02T17:01:19.096Z"
+}
