@@ -28,6 +28,7 @@ import {
   FilterIcon,
   StocksIcon,
   PrivateIcon,
+  RWAIcon,
 } from '../components/icons/TabBarIcons';
 import { useTheme } from '../hooks/useTheme';
 import { DEMO_STOCKS, DEMO_STOCK_QUOTES, formatMarketCap } from '../utils/mockStockData';
@@ -51,6 +52,18 @@ import {
   PrivateListing,
 } from '../utils/mockPrivateStockData';
 import { usePrivateAccessStore, getUnlockedCount, getTotalListingsCount } from '../store/privateAccessStore';
+import {
+  RWA_TOKENS,
+  RWA_CATEGORIES,
+  RWAToken,
+  RWACategory,
+  getRWATokensByCategory,
+  getCategoryIcon,
+  getCategoryColor,
+  getRiskColor as getRWARiskColor,
+  formatRWAMarketCap,
+  getRWAMarketStats,
+} from '../utils/mockRWAData';
 import { InviteCodeModal } from '../components/InviteCodeModal';
 import { useUserProfileStore } from '../store/userProfileStore';
 import { useKYCStore } from '../store/kycStore';
@@ -58,8 +71,9 @@ import { useFundingStore } from '../store/fundingStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type TabType = 'crypto' | 'stocks' | 'events' | 'private' | 'trending';
+type TabType = 'crypto' | 'stocks' | 'rwa' | 'events' | 'private' | 'trending';
 type PrivateSubTab = 'pre-ipo' | 'startups' | 'secondary-ats' | 'private-listing';
+type RWASubTab = 'all' | 'real-estate' | 'commodities' | 'bonds' | 'credit' | 'carbon' | 'art';
 
 // Demo market data with more details
 const CRYPTO_MARKETS = [
@@ -128,6 +142,7 @@ export function MarketsScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('crypto');
   const [privateSubTab, setPrivateSubTab] = useState<PrivateSubTab>('pre-ipo');
+  const [rwaSubTab, setRwaSubTab] = useState<RWASubTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [chartData, setChartData] = useState<Record<string, number[]>>({});
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -206,6 +221,15 @@ export function MarketsScreen() {
         return CRYPTO_MARKETS;
       case 'stocks':
         return STOCK_MARKETS;
+      case 'rwa':
+        if (rwaSubTab === 'all') return RWA_TOKENS;
+        if (rwaSubTab === 'real-estate') return getRWATokensByCategory('real-estate');
+        if (rwaSubTab === 'commodities') return getRWATokensByCategory('commodities');
+        if (rwaSubTab === 'bonds') return [...getRWATokensByCategory('treasury-bonds'), ...getRWATokensByCategory('corporate-bonds')];
+        if (rwaSubTab === 'credit') return getRWATokensByCategory('private-credit');
+        if (rwaSubTab === 'carbon') return getRWATokensByCategory('carbon-credits');
+        if (rwaSubTab === 'art') return getRWATokensByCategory('art-collectibles');
+        return RWA_TOKENS;
       case 'events':
         return EVENT_MARKETS;
       case 'private':
@@ -544,10 +568,123 @@ export function MarketsScreen() {
     );
   };
 
+  // Render RWA token item
+  const renderRWAItem = ({ item, index }: { item: RWAToken; index: number }) => {
+    const isInstitutional = item.investorTier === 'institutional';
+    const hasYield = item.yield !== undefined;
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: Animated.multiply(
+                slideAnim,
+                new Animated.Value(1 + index * 0.1)
+              ),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.rwaCard,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
+          ]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            // Check if institutional-only and user needs onboarding
+            if (isInstitutional && !checkPrivateAssetAccess()) return;
+            navigation.navigate('RWADetail' as never, { tokenId: item.id } as never);
+          }}
+        >
+          {/* Top Row: Category Icon, Name/Symbol, Price/Change */}
+          <View style={styles.rwaTopRow}>
+            <View style={styles.rwaLeft}>
+              <View style={[styles.rwaCategoryIcon, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
+                <Text style={styles.rwaCategoryEmoji}>{getCategoryIcon(item.category)}</Text>
+              </View>
+              <View style={styles.rwaInfo}>
+                <View style={styles.rwaSymbolRow}>
+                  <Text style={[styles.rwaSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+                  {isInstitutional && (
+                    <View style={[styles.institutionalBadge, { backgroundColor: theme.colors.accent.glow }]}>
+                      <Text style={[styles.institutionalText, { color: theme.colors.accent.primary }]}>PRO</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.rwaName, { color: theme.colors.text.tertiary }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.rwaRight}>
+              <Text style={[styles.rwaPrice, { color: theme.colors.text.primary }]}>
+                ${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+              <View style={[
+                styles.rwaChangeBadge,
+                { backgroundColor: item.change24h >= 0 ? theme.colors.success.primary + '20' : theme.colors.error.primary + '20' },
+              ]}>
+                <Text style={[
+                  styles.rwaChangeText,
+                  { color: item.change24h >= 0 ? theme.colors.success.primary : theme.colors.error.primary },
+                ]}>
+                  {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Row: Yield (if applicable), Risk Level, Min Investment */}
+          <View style={styles.rwaBottomRow}>
+            {hasYield ? (
+              <View style={styles.rwaMetric}>
+                <Text style={[styles.rwaMetricLabel, { color: theme.colors.text.tertiary }]}>Yield</Text>
+                <Text style={[styles.rwaYieldValue, { color: theme.colors.success.primary }]}>
+                  {item.yield?.toFixed(2)}% APY
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.rwaMetric}>
+                <Text style={[styles.rwaMetricLabel, { color: theme.colors.text.tertiary }]}>MCap</Text>
+                <Text style={[styles.rwaMetricValue, { color: theme.colors.text.primary }]}>
+                  {formatRWAMarketCap(item.marketCap)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.rwaMetric}>
+              <Text style={[styles.rwaMetricLabel, { color: theme.colors.text.tertiary }]}>Risk</Text>
+              <View style={[styles.rwaRiskBadge, { backgroundColor: getRWARiskColor(item.riskLevel) + '20' }]}>
+                <Text style={[styles.rwaRiskText, { color: getRWARiskColor(item.riskLevel) }]}>
+                  {item.riskLevel.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.rwaMetric}>
+              <Text style={[styles.rwaMetricLabel, { color: theme.colors.text.tertiary }]}>Min</Text>
+              <Text style={[styles.rwaMetricValue, { color: theme.colors.accent.primary }]}>
+                ${item.minimumInvestment.toLocaleString()}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
   const renderMarketItem = ({ item, index }: { item: any; index: number }) => {
     const isEvent = activeTab === 'events';
     const isStock = activeTab === 'stocks';
     const isPrivate = activeTab === 'private';
+    const isRWA = activeTab === 'rwa';
+
+    // Handle RWA items
+    if (isRWA) {
+      return renderRWAItem({ item: item as RWAToken, index });
+    }
 
     // Handle private subtabs with different renderers
     if (isPrivate) {
@@ -664,6 +801,7 @@ export function MarketsScreen() {
   const tabs: { id: TabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
     { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
     { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon },
+    { id: 'rwa', label: 'RWA', IconComponent: RWAIcon },
     { id: 'private', label: 'Private', IconComponent: PrivateIcon },
     { id: 'events', label: 'Events', IconComponent: EventsIcon },
     { id: 'trending', label: 'Trending', IconComponent: TrendingIcon },
@@ -764,6 +902,122 @@ export function MarketsScreen() {
         </View>
       </Animated.View>
 
+      {/* RWA Subtabs */}
+      {activeTab === 'rwa' && (
+        <View style={styles.subTabsContainer}>
+          <View style={[styles.subTabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'all' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('all');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'all' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                All
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'real-estate' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('real-estate');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'real-estate' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Property
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'commodities' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('commodities');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'commodities' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Gold
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'bonds' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('bonds');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'bonds' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Bonds
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'carbon' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('carbon');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'carbon' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Carbon
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                rwaSubTab === 'art' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRwaSubTab('art');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                rwaSubTab === 'art' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Art
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* Private Subtabs */}
       {activeTab === 'private' && (
         <View style={styles.subTabsContainer}>
@@ -846,7 +1100,30 @@ export function MarketsScreen() {
 
       {/* Market Stats Bar */}
       <View style={[styles.statsBar, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
-        {activeTab === 'stocks' ? (
+        {activeTab === 'rwa' ? (
+          <>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Assets</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                {getRWAMarketStats().totalTokens}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Market Cap</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                {formatRWAMarketCap(getRWAMarketStats().totalMarketCap)}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Avg Yield</Text>
+              <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>
+                {getRWAMarketStats().avgYield.toFixed(2)}%
+              </Text>
+            </View>
+          </>
+        ) : activeTab === 'stocks' ? (
           <>
             <View style={styles.statItem}>
               <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Market</Text>
@@ -1511,5 +1788,111 @@ const styles = StyleSheet.create({
   listingMetric: {
     flex: 1,
     alignItems: 'center',
+  },
+  // RWA Item Styles
+  rwaCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  rwaTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  rwaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  rwaCategoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rwaCategoryEmoji: {
+    fontSize: 22,
+  },
+  rwaInfo: {
+    flex: 1,
+  },
+  rwaSymbolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rwaSymbol: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  rwaName: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  rwaRight: {
+    alignItems: 'flex-end',
+  },
+  rwaPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  rwaChangeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  rwaChangeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rwaBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: MeruTheme.colors.border.subtle,
+  },
+  rwaMetric: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  rwaMetricLabel: {
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  rwaMetricValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  rwaYieldValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  rwaRiskBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  rwaRiskText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  institutionalBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  institutionalText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

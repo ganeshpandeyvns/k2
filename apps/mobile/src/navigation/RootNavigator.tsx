@@ -56,6 +56,14 @@ import { ATSTokenTradeScreen } from '../screens/ATSTokenTradeScreen';
 import { PrivateListingDetailScreen } from '../screens/PrivateListingDetailScreen';
 import { PrivateListingInvestScreen } from '../screens/PrivateListingInvestScreen';
 
+// RWA Screens
+import { RWADetailScreen } from '../screens/RWADetailScreen';
+import { RWATradeScreen } from '../screens/RWATradeScreen';
+
+// Options Screens
+import { OptionsChainScreen } from '../screens/options/OptionsChainScreen';
+import { OptionsTradeScreen } from '../screens/options/OptionsTradeScreen';
+
 // Types
 export type AssetType = 'crypto' | 'stock' | 'event' | 'private-stock';
 
@@ -93,6 +101,12 @@ export type RootStackParamList = {
   // Private Listings
   PrivateListingDetail: { id: string };
   PrivateListingInvest: { id: string };
+  // RWA Tokens
+  RWADetail: { tokenId: string };
+  RWATrade: { tokenId: string; side: 'buy' | 'sell' };
+  // Options
+  OptionsChain: { symbol: string };
+  OptionsTrade: { optionId: string };
 };
 
 export type MainTabParamList = {
@@ -318,6 +332,28 @@ export function RootNavigator() {
           <Stack.Screen
             name="PrivateListingInvest"
             component={PrivateListingInvestScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* RWA Token Screens */}
+          <Stack.Screen
+            name="RWADetail"
+            component={RWADetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="RWATrade"
+            component={RWATradeScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* Options Screens */}
+          <Stack.Screen
+            name="OptionsChain"
+            component={OptionsChainScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="OptionsTrade"
+            component={OptionsTradeScreen}
             options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
           />
         </>

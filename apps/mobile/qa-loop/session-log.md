@@ -192,6 +192,76 @@ These bugs were fixed before QA loop was set up:
 
 ---
 
+## Session 5 - 2026-02-02 (RWA & Options QA)
+
+**Score Change**: -40 (2 MEDIUM × -20) + 20 (2 pattern catches × +10) = -20
+**Running Score**: 585
+
+### Context
+QA review of newly implemented RWA (Real World Assets) tokens and Stock Options trading features:
+- RWATradeScreen.tsx - Buy/sell RWA tokens
+- OptionsTradeScreen.tsx - Buy options contracts
+- OptionsChainScreen.tsx - View options chain
+- mockRWAData.ts - RWA token data
+- mockOptionsData.ts - Options chain generation
+
+### Patterns Applied
+| Pattern | Screen | Result |
+|---------|--------|--------|
+| P001 | RWATradeScreen | **CAUGHT BUG** - Missing input sanitization |
+| P001 | OptionsTradeScreen | PASS - Has sanitization |
+| P002 | RWATradeScreen | **CAUGHT BUG** - Division by zero risk |
+| P002 | OptionsTradeScreen | PASS - No division operations |
+| P003 | Both screens | PASS - Balance validation present |
+| P009 | Both screens | PASS - Double-tap protection present |
+| P010 | Both screens | PASS - Large transaction confirmation present |
+| P011 | OptionsTradeScreen | PASS - NaN handling with `|| 0` |
+| P018 | RWATradeScreen | PASS - Uses executeBuy/executeSell |
+
+### Bugs Found
+| Severity | File | Line | Description | Pattern |
+|----------|------|------|-------------|---------|
+| MEDIUM | src/screens/RWATradeScreen.tsx | 64 | Division by zero if token.price is 0 | P002 |
+| MEDIUM | src/screens/RWATradeScreen.tsx | 218 | Amount input accepts invalid chars (letters, symbols, multiple decimals) | P001 |
+
+### Bugs Fixed
+1. **RWATradeScreen.tsx:64** - Division by zero protection
+   - Root cause: `tokenQuantity = amountNum / token.price` without checking if price is 0
+   - Fix: `tokenQuantity = token.price > 0 ? amountNum / token.price : 0`
+   - Pattern: P002
+
+2. **RWATradeScreen.tsx:218** - Input sanitization
+   - Root cause: TextInput onChangeText directly set state without sanitizing
+   - Fix: Added `handleAmountChange()` function that:
+     - Removes non-numeric characters except decimal
+     - Prevents multiple decimal points
+     - Limits to 2 decimal places
+   - Pattern: P001
+
+### Positive Findings (No Bugs)
+- **OptionsTradeScreen**: Excellent implementation
+  - Contract input sanitized with `value.replace(/[^0-9]/g, '')`
+  - Large transaction confirmation at $1000
+  - Balance validation before trade
+  - Double-tap protection with `isProcessing` state
+
+- **OptionsChainScreen**: Clean implementation
+  - No transaction operations, just display
+
+- **Both screens**: Have proper risk disclosures and demo mode indicators
+
+### Score Calculation
+- Bugs: MEDIUM(2) × -20 = -40
+- Pattern catches: P001 × 1 + P002 × 1 = +20
+- New patterns: 0 × +25 = 0
+- **Total**: -20
+
+### Tests
+- All 194 tests passing
+- No regressions introduced
+
+---
+
 ## Template for Future Sessions
 
 ```markdown

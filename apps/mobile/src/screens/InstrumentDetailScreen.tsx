@@ -32,6 +32,7 @@ import {
   formatVolume,
 } from '../utils/mockStockData';
 import { getMarketStatus, getSessionColor, getSessionIcon } from '../utils/marketHours';
+import { hasOptions } from '../utils/mockOptionsData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_HEIGHT = 200;
@@ -893,20 +894,39 @@ export function InstrumentDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : isStock ? (
-          /* Stock buttons - Buy & Sell only (no Swap/Send for stocks) */
-          <View style={styles.stockButtons}>
-            <TouchableOpacity
-              style={[styles.tradeButton, styles.buyButton]}
-              onPress={() => handleTradePress('buy')}
-            >
-              <Text style={styles.tradeButtonText}>Buy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tradeButton, styles.sellButton]}
-              onPress={() => handleTradePress('sell')}
-            >
-              <Text style={styles.tradeButtonText}>Sell</Text>
-            </TouchableOpacity>
+          /* Stock buttons - Buy, Sell, and Options */
+          <View style={styles.stockButtonsContainer}>
+            <View style={styles.stockButtons}>
+              <TouchableOpacity
+                style={[styles.tradeButton, styles.buyButton]}
+                onPress={() => handleTradePress('buy')}
+              >
+                <Text style={styles.tradeButtonText}>Buy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tradeButton, styles.sellButton]}
+                onPress={() => handleTradePress('sell')}
+              >
+                <Text style={styles.tradeButtonText}>Sell</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Options Trading Button - only for stocks with options */}
+            {hasOptions(instrumentId) && (
+              <TouchableOpacity
+                style={styles.optionsButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  navigation.navigate('OptionsChain' as never, { symbol: instrumentId } as never);
+                }}
+              >
+                <Text style={styles.optionsIcon}>📈</Text>
+                <View style={styles.optionsTextContainer}>
+                  <Text style={styles.optionsButtonText}>Trade Options</Text>
+                  <Text style={styles.optionsSubtext}>Calls & Puts</Text>
+                </View>
+                <Text style={styles.optionsArrow}>→</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <View style={styles.cryptoButtonsContainer}>
@@ -1267,9 +1287,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  stockButtonsContainer: {
+    gap: 12,
+  },
   stockButtons: {
     flexDirection: 'row',
     gap: 12,
+  },
+  optionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  optionsIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  optionsTextContainer: {
+    flex: 1,
+  },
+  optionsButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  optionsSubtext: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+  optionsArrow: {
+    fontSize: 18,
+    color: '#00D4AA',
+    fontWeight: '600',
   },
   cryptoButtonsContainer: {
     gap: 12,

@@ -519,6 +519,137 @@ export const CheckIcon: React.FC<IconProps> = ({
   </Svg>
 );
 
+// RWA (Real World Assets) Icon - Building with coin/token overlay
+export const RWAIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          {/* Building base */}
+          <Path
+            d="M3 21H21"
+            stroke={activeColor}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          {/* Building structure */}
+          <Path
+            d="M5 21V8L12 3L19 8V21"
+            fill={activeColor}
+          />
+          {/* Windows */}
+          <Rect x="8" y="11" width="3" height="3" rx="0.5" fill={MeruTheme.colors.background.primary} />
+          <Rect x="13" y="11" width="3" height="3" rx="0.5" fill={MeruTheme.colors.background.primary} />
+          <Rect x="8" y="16" width="3" height="5" rx="0.5" fill={MeruTheme.colors.background.primary} />
+          <Rect x="13" y="16" width="3" height="5" rx="0.5" fill={MeruTheme.colors.background.primary} />
+          {/* Token/coin overlay */}
+          <Circle cx="18" cy="7" r="4" fill={activeColor} stroke={MeruTheme.colors.background.primary} strokeWidth={1.5} />
+          <Path
+            d="M18 5V9M16.5 7H19.5"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+        </G>
+      ) : (
+        <G>
+          {/* Building base */}
+          <Path
+            d="M3 21H21"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          {/* Building structure */}
+          <Path
+            d="M5 21V8L12 3L19 8V21"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Windows */}
+          <Rect x="8" y="11" width="3" height="3" rx="0.5" stroke={activeColor} strokeWidth={1} />
+          <Rect x="13" y="11" width="3" height="3" rx="0.5" stroke={activeColor} strokeWidth={1} />
+          <Rect x="8" y="16" width="3" height="5" rx="0.5" stroke={activeColor} strokeWidth={1} />
+          <Rect x="13" y="16" width="3" height="5" rx="0.5" stroke={activeColor} strokeWidth={1} />
+          {/* Token/coin overlay */}
+          <Circle cx="18" cy="7" r="4" stroke={activeColor} strokeWidth={1.5} />
+          <Path
+            d="M18 5V9M16.5 7H19.5"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
+// Options Icon - Chart with call/put arrows
+export const OptionsIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          {/* Base chart area */}
+          <Rect x="3" y="3" width="18" height="18" rx="2" fill={activeColor} />
+          {/* Up arrow (call) */}
+          <Path
+            d="M8 16V10M8 10L5 13M8 10L11 13"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Down arrow (put) */}
+          <Path
+            d="M16 8V14M16 14L13 11M16 14L19 11"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      ) : (
+        <G>
+          {/* Base chart area */}
+          <Rect x="3" y="3" width="18" height="18" rx="2" stroke={activeColor} strokeWidth={1.5} />
+          {/* Up arrow (call) */}
+          <Path
+            d="M8 16V10M8 10L5 13M8 10L11 13"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Down arrow (put) */}
+          <Path
+            d="M16 8V14M16 14L13 11M16 14L19 11"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
 // Private Stocks Icon - Lock with chart (exclusive/private investment)
 export const PrivateIcon: React.FC<IconProps> = ({
   size = 18,
