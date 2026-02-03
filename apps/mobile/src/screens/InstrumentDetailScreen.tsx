@@ -919,7 +919,6 @@ export function InstrumentDetailScreen() {
                   navigation.navigate('OptionsChain' as never, { symbol: instrumentId } as never);
                 }}
               >
-                <Text style={styles.optionsIcon}>📈</Text>
                 <View style={styles.optionsTextContainer}>
                   <Text style={styles.optionsButtonText}>Trade Options</Text>
                   <Text style={styles.optionsSubtext}>Calls & Puts</Text>
@@ -1297,33 +1296,28 @@ const styles = StyleSheet.create({
   optionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FF6B00',
     borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  optionsIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    padding: 16,
   },
   optionsTextContainer: {
     flex: 1,
   },
   optionsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   optionsSubtext: {
     fontSize: 12,
-    color: '#666666',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   optionsArrow: {
-    fontSize: 18,
-    color: '#00D4AA',
-    fontWeight: '600',
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   cryptoButtonsContainer: {
     gap: 12,

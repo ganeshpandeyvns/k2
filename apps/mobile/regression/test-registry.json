@@ -3,16 +3,16 @@
     {
       "file": "apps/mobile/package.json",
       "addedAt": "2026-02-02T17:01:19.093Z",
-      "lastTested": "2026-02-02T17:01:19.093Z",
-      "testCount": 1,
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 2,
       "lastResult": "passed",
       "mappedTests": []
     },
     {
       "file": "apps/mobile/src/screens/MarketsScreen.tsx",
       "addedAt": "2026-02-02T17:01:19.093Z",
-      "lastTested": "2026-02-02T17:01:19.093Z",
-      "testCount": 1,
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 3,
       "lastResult": "passed",
       "mappedTests": [
         "__tests__/store/privateAccessStore.test.ts",
@@ -20,7 +20,167 @@
         "__tests__/store/kycStore.test.ts",
         "__tests__/screens/MarketsScreen.test.ts"
       ]
+    },
+    {
+      "file": "apps/mobile/__tests__/store/kycStore.test.ts",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/__tests__/store/privateAccessStore.test.ts",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/__tests__/store/userProfileStore.test.ts",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/regression/config.json",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/regression/run-regression.js",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/regression/test-registry.json",
+      "addedAt": "2026-02-02T20:55:32.661Z",
+      "lastTested": "2026-02-02T20:55:32.661Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/qa-loop/metrics.json",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/qa-loop/patterns.json",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/qa-loop/session-log.md",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/src/components/icons/TabBarIcons.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/components/TabBarIcons.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/navigation/RootNavigator.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": []
+    },
+    {
+      "file": "apps/mobile/src/screens/InstrumentDetailScreen.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/screens/InstrumentDetailScreen.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/screens/RWADetailScreen.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/screens/RWADetailScreen.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/screens/RWATradeScreen.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/screens/RWATradeScreen.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/screens/options/OptionsChainScreen.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/screens/OptionsChainScreen.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/screens/options/OptionsTradeScreen.tsx",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/screens/OptionsTradeScreen.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/utils/mockOptionsData.ts",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/utils/mockOptionsData.test.ts"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/utils/mockRWAData.ts",
+      "addedAt": "2026-02-03T05:04:12.921Z",
+      "lastTested": "2026-02-03T05:04:12.921Z",
+      "testCount": 1,
+      "lastResult": "passed",
+      "mappedTests": [
+        "__tests__/utils/mockRWAData.test.ts"
+      ]
     }
   ],
-  "lastUpdated": "2026-02-02T17:01:19.096Z"
+  "lastUpdated": "2026-02-03T05:04:12.926Z"
 }

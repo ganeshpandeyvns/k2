@@ -71,7 +71,10 @@ import { useFundingStore } from '../store/fundingStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type TabType = 'crypto' | 'stocks' | 'rwa' | 'events' | 'private' | 'trending';
+// Row 1: Asset type tabs
+type AssetTabType = 'crypto' | 'stocks' | 'rwa' | 'events' | 'private';
+// Row 2: View filter tabs
+type ViewFilterType = 'all' | 'trending' | 'gainers' | 'losers' | 'new';
 type PrivateSubTab = 'pre-ipo' | 'startups' | 'secondary-ats' | 'private-listing';
 type RWASubTab = 'all' | 'real-estate' | 'commodities' | 'bonds' | 'credit' | 'carbon' | 'art';
 
@@ -140,7 +143,8 @@ function getStockColor(symbol: string): string {
 export function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] = useState<TabType>('crypto');
+  const [activeAssetTab, setActiveAssetTab] = useState<AssetTabType>('crypto');
+  const [activeViewFilter, setActiveViewFilter] = useState<ViewFilterType>('all');
   const [privateSubTab, setPrivateSubTab] = useState<PrivateSubTab>('pre-ipo');
   const [rwaSubTab, setRwaSubTab] = useState<RWASubTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -215,8 +219,9 @@ export function MarketsScreen() {
     return true;
   };
 
-  const getMarkets = () => {
-    switch (activeTab) {
+  // Get base markets based on asset tab
+  const getBaseMarkets = () => {
+    switch (activeAssetTab) {
       case 'crypto':
         return CRYPTO_MARKETS;
       case 'stocks':
@@ -238,10 +243,45 @@ export function MarketsScreen() {
         if (privateSubTab === 'secondary-ats') return ATS_TOKENS;
         if (privateSubTab === 'private-listing') return PRIVATE_LISTINGS;
         return PRE_IPO_COMPANIES;
-      case 'trending':
-        return TRENDING;
       default:
         return CRYPTO_MARKETS;
+    }
+  };
+
+  // Apply view filter to markets
+  const getMarkets = () => {
+    const baseMarkets = getBaseMarkets();
+
+    // For RWA and Private, filters don't apply the same way
+    if (activeAssetTab === 'rwa' || activeAssetTab === 'private') {
+      return baseMarkets;
+    }
+
+    switch (activeViewFilter) {
+      case 'trending':
+        // For crypto, show trending coins; for others, sort by volume
+        if (activeAssetTab === 'crypto') {
+          return TRENDING;
+        }
+        return [...baseMarkets].sort((a, b) => {
+          const volA = parseFloat(String(a.volume || '0').replace(/[^\d.]/g, ''));
+          const volB = parseFloat(String(b.volume || '0').replace(/[^\d.]/g, ''));
+          return volB - volA;
+        });
+      case 'gainers':
+        return [...baseMarkets]
+          .filter((m) => m.change24h > 0)
+          .sort((a, b) => b.change24h - a.change24h);
+      case 'losers':
+        return [...baseMarkets]
+          .filter((m) => m.change24h < 0)
+          .sort((a, b) => a.change24h - b.change24h);
+      case 'new':
+        // For demo, just shuffle to simulate "new" listings
+        return [...baseMarkets].sort(() => Math.random() - 0.5).slice(0, 6);
+      case 'all':
+      default:
+        return baseMarkets;
     }
   };
 
@@ -676,10 +716,10 @@ export function MarketsScreen() {
   };
 
   const renderMarketItem = ({ item, index }: { item: any; index: number }) => {
-    const isEvent = activeTab === 'events';
-    const isStock = activeTab === 'stocks';
-    const isPrivate = activeTab === 'private';
-    const isRWA = activeTab === 'rwa';
+    const isEvent = activeAssetTab === 'events';
+    const isStock = activeAssetTab === 'stocks';
+    const isPrivate = activeAssetTab === 'private';
+    const isRWA = activeAssetTab === 'rwa';
 
     // Handle RWA items
     if (isRWA) {
@@ -798,13 +838,22 @@ export function MarketsScreen() {
     );
   };
 
-  const tabs: { id: TabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
+  // Row 1: Asset type tabs
+  const assetTabs: { id: AssetTabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
     { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
     { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon },
     { id: 'rwa', label: 'RWA', IconComponent: RWAIcon },
-    { id: 'private', label: 'Private', IconComponent: PrivateIcon },
     { id: 'events', label: 'Events', IconComponent: EventsIcon },
-    { id: 'trending', label: 'Trending', IconComponent: TrendingIcon },
+    { id: 'private', label: 'Private', IconComponent: PrivateIcon },
+  ];
+
+  // Row 2: View filter tabs
+  const viewFilters: { id: ViewFilterType; label: string; emoji?: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'trending', label: 'Hot', emoji: '🔥' },
+    { id: 'gainers', label: 'Gainers', emoji: '📈' },
+    { id: 'losers', label: 'Losers', emoji: '📉' },
+    { id: 'new', label: 'New', emoji: '✨' },
   ];
 
   return (
@@ -859,7 +908,7 @@ export function MarketsScreen() {
         </View>
       </Animated.View>
 
-      {/* Tabs */}
+      {/* Row 1: Asset Type Tabs */}
       <Animated.View
         style={[
           styles.tabsContainer,
@@ -867,8 +916,8 @@ export function MarketsScreen() {
         ]}
       >
         <View style={[styles.tabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
+          {assetTabs.map((tab) => {
+            const isActive = activeAssetTab === tab.id;
             return (
               <Pressable
                 key={tab.id}
@@ -878,7 +927,11 @@ export function MarketsScreen() {
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setActiveTab(tab.id);
+                  setActiveAssetTab(tab.id);
+                  // Reset view filter when switching asset tabs (except for RWA/Private which don't use filters)
+                  if (tab.id !== 'rwa' && tab.id !== 'private') {
+                    setActiveViewFilter('all');
+                  }
                 }}
               >
                 <tab.IconComponent
@@ -902,8 +955,45 @@ export function MarketsScreen() {
         </View>
       </Animated.View>
 
+      {/* Row 2: View Filter Tabs (only for crypto, stocks, events) */}
+      {activeAssetTab !== 'rwa' && activeAssetTab !== 'private' && (
+        <View style={styles.viewFiltersContainer}>
+          <View style={[styles.viewFiltersWrapper, { backgroundColor: theme.colors.background.secondary }]}>
+            {viewFilters.map((filter) => {
+              const isActive = activeViewFilter === filter.id;
+              return (
+                <Pressable
+                  key={filter.id}
+                  style={[
+                    styles.viewFilterTab,
+                    isActive && [styles.viewFilterTabActive, { backgroundColor: theme.colors.accent.glow }],
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setActiveViewFilter(filter.id);
+                  }}
+                >
+                  {filter.emoji && (
+                    <Text style={styles.viewFilterEmoji}>{filter.emoji}</Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.viewFilterLabel,
+                      { color: theme.colors.text.tertiary },
+                      isActive && { color: theme.colors.accent.primary, fontWeight: '600' },
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       {/* RWA Subtabs */}
-      {activeTab === 'rwa' && (
+      {activeAssetTab === 'rwa' && (
         <View style={styles.subTabsContainer}>
           <View style={[styles.subTabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
             <Pressable
@@ -939,7 +1029,7 @@ export function MarketsScreen() {
                 { color: theme.colors.text.tertiary },
                 rwaSubTab === 'real-estate' && { color: theme.colors.accent.primary, fontWeight: '600' },
               ]}>
-                Property
+                Real Estate
               </Text>
             </Pressable>
             <Pressable
@@ -1019,7 +1109,7 @@ export function MarketsScreen() {
       )}
 
       {/* Private Subtabs */}
-      {activeTab === 'private' && (
+      {activeAssetTab === 'private' && (
         <View style={styles.subTabsContainer}>
           <View style={[styles.subTabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
             <Pressable
@@ -1100,7 +1190,7 @@ export function MarketsScreen() {
 
       {/* Market Stats Bar */}
       <View style={[styles.statsBar, { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle }]}>
-        {activeTab === 'rwa' ? (
+        {activeAssetTab === 'rwa' ? (
           <>
             <View style={styles.statItem}>
               <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Assets</Text>
@@ -1123,7 +1213,7 @@ export function MarketsScreen() {
               </Text>
             </View>
           </>
-        ) : activeTab === 'stocks' ? (
+        ) : activeAssetTab === 'stocks' ? (
           <>
             <View style={styles.statItem}>
               <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Market</Text>
@@ -1142,7 +1232,7 @@ export function MarketsScreen() {
               <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>+1.23%</Text>
             </View>
           </>
-        ) : activeTab === 'private' ? (
+        ) : activeAssetTab === 'private' ? (
           privateSubTab === 'secondary-ats' ? (
             <>
               <View style={styles.statItem}>
@@ -1356,6 +1446,36 @@ const styles = StyleSheet.create({
     backgroundColor: MeruTheme.colors.accent.primary,
     borderRadius: 1,
   },
+  // View Filter Tabs (Row 2)
+  viewFiltersContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  viewFiltersWrapper: {
+    flexDirection: 'row',
+    backgroundColor: MeruTheme.colors.background.secondary,
+    borderRadius: MeruTheme.radius.md,
+    padding: 4,
+  },
+  viewFilterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: MeruTheme.radius.sm,
+    gap: 4,
+  },
+  viewFilterTabActive: {
+    backgroundColor: MeruTheme.colors.accent.glow,
+  },
+  viewFilterEmoji: {
+    fontSize: 12,
+  },
+  viewFilterLabel: {
+    ...MeruTheme.typography.captionSmall,
+    color: MeruTheme.colors.text.tertiary,
+  },
   statsBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1509,6 +1629,7 @@ const styles = StyleSheet.create({
   subTabLabel: {
     ...MeruTheme.typography.caption,
     color: MeruTheme.colors.text.tertiary,
+    textAlign: 'center',
   },
   // Private Stock Card
   privateCard: {
