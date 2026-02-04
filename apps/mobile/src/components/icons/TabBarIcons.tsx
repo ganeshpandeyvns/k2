@@ -704,3 +704,91 @@ export const PrivateIcon: React.FC<IconProps> = ({
     </Svg>
   );
 };
+
+// Fixed Income / Bond Icon - Certificate with percent symbol
+export const BondIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {focused ? (
+        <G>
+          {/* Certificate body */}
+          <Path
+            d="M4 4C4 2.89543 4.89543 2 6 2H18C19.1046 2 20 2.89543 20 4V18C20 19.1046 19.1046 20 18 20H14L12 22L10 20H6C4.89543 20 4 19.1046 4 18V4Z"
+            fill={activeColor}
+          />
+          {/* Percent symbol top circle */}
+          <Circle cx="9" cy="9" r="2" fill={MeruTheme.colors.background.primary} />
+          {/* Percent symbol bottom circle */}
+          <Circle cx="15" cy="15" r="2" fill={MeruTheme.colors.background.primary} />
+          {/* Percent diagonal line */}
+          <Path
+            d="M16 8L8 16"
+            stroke={MeruTheme.colors.background.primary}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        </G>
+      ) : (
+        <G>
+          {/* Certificate body outline */}
+          <Path
+            d="M4 4C4 2.89543 4.89543 2 6 2H18C19.1046 2 20 2.89543 20 4V18C20 19.1046 19.1046 20 18 20H14L12 22L10 20H6C4.89543 20 4 19.1046 4 18V4Z"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Percent symbol top circle */}
+          <Circle cx="9" cy="9" r="2" stroke={activeColor} strokeWidth={1.5} />
+          {/* Percent symbol bottom circle */}
+          <Circle cx="15" cy="15" r="2" stroke={activeColor} strokeWidth={1.5} />
+          {/* Percent diagonal line */}
+          <Path
+            d="M16 8L8 16"
+            stroke={activeColor}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+        </G>
+      )}
+    </Svg>
+  );
+};
+
+// AI Advisor Icon - AI Sparkles/Stars (common AI indicator)
+export const AdvisorIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = MeruTheme.colors.text.tertiary,
+  focused = false,
+}) => {
+  const activeColor = focused ? MeruTheme.colors.accent.primary : color;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Large 4-pointed star */}
+      <Path
+        d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"
+        fill={focused ? activeColor : 'none'}
+        stroke={activeColor}
+        strokeWidth={focused ? 0 : 1.5}
+        strokeLinejoin="round"
+      />
+      {/* Small 4-pointed star (top right) */}
+      <Path
+        d="M19 2L19.75 4.25L22 5L19.75 5.75L19 8L18.25 5.75L16 5L18.25 4.25L19 2Z"
+        fill={activeColor}
+      />
+      {/* Small 4-pointed star (bottom right) */}
+      <Path
+        d="M19 16L19.5 17.5L21 18L19.5 18.5L19 20L18.5 18.5L17 18L18.5 17.5L19 16Z"
+        fill={activeColor}
+      />
+    </Svg>
+  );
+};

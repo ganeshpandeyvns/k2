@@ -64,6 +64,14 @@ import { RWATradeScreen } from '../screens/RWATradeScreen';
 import { OptionsChainScreen } from '../screens/options/OptionsChainScreen';
 import { OptionsTradeScreen } from '../screens/options/OptionsTradeScreen';
 
+// Fixed Income Screens
+import { FixedIncomeDetailScreen } from '../screens/FixedIncomeDetailScreen';
+import { FixedIncomeTradeScreen } from '../screens/FixedIncomeTradeScreen';
+
+// Advisor Screens
+import { AdvisorHomeScreen } from '../screens/advisor/AdvisorHomeScreen';
+import { AdvisorChatScreen } from '../screens/advisor/AdvisorChatScreen';
+
 // Types
 export type AssetType = 'crypto' | 'stock' | 'event' | 'private-stock';
 
@@ -107,12 +115,19 @@ export type RootStackParamList = {
   // Options
   OptionsChain: { symbol: string };
   OptionsTrade: { optionId: string };
+  // Fixed Income
+  FixedIncomeDetail: { instrumentId: string };
+  FixedIncomeTrade: { instrumentId: string; side: 'buy' | 'sell' };
+  // Advisor
+  AdvisorHome: undefined;
+  AdvisorChat: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
   Markets: undefined;
   Portfolio: undefined;
+  Advisor: undefined;
   Settings: undefined;
 };
 
@@ -120,7 +135,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // Import premium SVG icons
-import { HomeIcon, MarketsIcon, PortfolioIcon, SettingsIcon } from '../components/icons/TabBarIcons';
+import { HomeIcon, MarketsIcon, PortfolioIcon, SettingsIcon, AdvisorIcon } from '../components/icons/TabBarIcons';
 
 // Custom Tab Bar Icon Component
 const TabIcon = ({ label, focused }: { label: string; focused: boolean }) => {
@@ -128,6 +143,7 @@ const TabIcon = ({ label, focused }: { label: string; focused: boolean }) => {
     Home: HomeIcon,
     Markets: MarketsIcon,
     Portfolio: PortfolioIcon,
+    Advisor: AdvisorIcon,
     Settings: SettingsIcon,
   }[label];
 
@@ -188,6 +204,14 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Portfolio',
           tabBarIcon: ({ focused }) => <TabIcon label="Portfolio" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Advisor"
+        component={AdvisorHomeScreen}
+        options={{
+          tabBarLabel: 'Advisor',
+          tabBarIcon: ({ focused }) => <TabIcon label="Advisor" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -355,6 +379,23 @@ export function RootNavigator() {
             name="OptionsTrade"
             component={OptionsTradeScreen}
             options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* Fixed Income Screens */}
+          <Stack.Screen
+            name="FixedIncomeDetail"
+            component={FixedIncomeDetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="FixedIncomeTrade"
+            component={FixedIncomeTradeScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+          {/* Advisor Screens */}
+          <Stack.Screen
+            name="AdvisorChat"
+            component={AdvisorChatScreen}
+            options={{ animation: 'slide_from_bottom' }}
           />
         </>
       ) : (

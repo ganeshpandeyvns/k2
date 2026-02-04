@@ -29,6 +29,7 @@ import {
   StocksIcon,
   PrivateIcon,
   RWAIcon,
+  BondIcon,
 } from '../components/icons/TabBarIcons';
 import { useTheme } from '../hooks/useTheme';
 import { DEMO_STOCKS, DEMO_STOCK_QUOTES, formatMarketCap } from '../utils/mockStockData';
@@ -68,13 +69,24 @@ import { InviteCodeModal } from '../components/InviteCodeModal';
 import { useUserProfileStore } from '../store/userProfileStore';
 import { useKYCStore } from '../store/kycStore';
 import { useFundingStore } from '../store/fundingStore';
+import {
+  FIXED_INCOME_INSTRUMENTS,
+  FixedIncomeInstrument,
+  formatYield,
+  formatPrice,
+  getCategoryLabel,
+  getCategoryColor as getFixedIncomeCategoryColor,
+  getRatingColor,
+} from '../utils/mockFixedIncomeData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Row 1: Asset type tabs
-type AssetTabType = 'crypto' | 'stocks' | 'rwa' | 'events' | 'private';
+type AssetTabType = 'crypto' | 'stocks' | 'bonds' | 'rwa' | 'events' | 'private';
 // Row 2: View filter tabs
 type ViewFilterType = 'all' | 'trending' | 'gainers' | 'losers' | 'new';
+// Fixed Income subtabs
+type FixedIncomeSubTab = 'all' | 'treasuries' | 'corporate' | 'municipal' | 'money-market';
 type PrivateSubTab = 'pre-ipo' | 'startups' | 'secondary-ats' | 'private-listing';
 type RWASubTab = 'all' | 'real-estate' | 'commodities' | 'bonds' | 'credit' | 'carbon' | 'art';
 
@@ -147,6 +159,7 @@ export function MarketsScreen() {
   const [activeViewFilter, setActiveViewFilter] = useState<ViewFilterType>('all');
   const [privateSubTab, setPrivateSubTab] = useState<PrivateSubTab>('pre-ipo');
   const [rwaSubTab, setRwaSubTab] = useState<RWASubTab>('all');
+  const [fixedIncomeSubTab, setFixedIncomeSubTab] = useState<FixedIncomeSubTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [chartData, setChartData] = useState<Record<string, number[]>>({});
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -226,6 +239,13 @@ export function MarketsScreen() {
         return CRYPTO_MARKETS;
       case 'stocks':
         return STOCK_MARKETS;
+      case 'bonds':
+        if (fixedIncomeSubTab === 'all') return FIXED_INCOME_INSTRUMENTS;
+        if (fixedIncomeSubTab === 'treasuries') return FIXED_INCOME_INSTRUMENTS.filter(i => i.category === 'treasuries');
+        if (fixedIncomeSubTab === 'corporate') return FIXED_INCOME_INSTRUMENTS.filter(i => i.category === 'corporate-ig' || i.category === 'corporate-hy');
+        if (fixedIncomeSubTab === 'municipal') return FIXED_INCOME_INSTRUMENTS.filter(i => i.category === 'municipal');
+        if (fixedIncomeSubTab === 'money-market') return FIXED_INCOME_INSTRUMENTS.filter(i => i.category === 'money-market');
+        return FIXED_INCOME_INSTRUMENTS;
       case 'rwa':
         if (rwaSubTab === 'all') return RWA_TOKENS;
         if (rwaSubTab === 'real-estate') return getRWATokensByCategory('real-estate');
@@ -252,8 +272,8 @@ export function MarketsScreen() {
   const getMarkets = () => {
     const baseMarkets = getBaseMarkets();
 
-    // For RWA and Private, filters don't apply the same way
-    if (activeAssetTab === 'rwa' || activeAssetTab === 'private') {
+    // For RWA, Bonds, and Private, filters don't apply the same way
+    if (activeAssetTab === 'rwa' || activeAssetTab === 'private' || activeAssetTab === 'bonds') {
       return baseMarkets;
     }
 
@@ -715,11 +735,103 @@ export function MarketsScreen() {
     );
   };
 
+  // Render Fixed Income item
+  const renderFixedIncomeItem = ({ item, index }: { item: FixedIncomeInstrument; index: number }) => {
+    const yieldColor = item.yield >= 5 ? theme.colors.success.primary : theme.colors.text.primary;
+    const categoryColor = getFixedIncomeCategoryColor(item.category);
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: Animated.multiply(
+                slideAnim,
+                new Animated.Value(1 + index * 0.1)
+              ),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.bondCard,
+            { backgroundColor: theme.colors.background.secondary, borderColor: theme.colors.border.subtle },
+            pressed && [styles.marketCardPressed, { backgroundColor: theme.colors.background.tertiary }],
+          ]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.navigate('FixedIncomeDetail' as never, { instrumentId: item.id } as never);
+          }}
+        >
+          {/* Top Row: Category Badge, Name, Price */}
+          <View style={styles.bondTopRow}>
+            <View style={styles.bondLeft}>
+              <View style={[styles.bondCategoryIcon, { backgroundColor: categoryColor + '20' }]}>
+                <Text style={[styles.bondCategoryText, { color: categoryColor }]}>
+                  {item.category === 'treasuries' ? 'UST' :
+                   item.category === 'corporate-ig' ? 'IG' :
+                   item.category === 'corporate-hy' ? 'HY' :
+                   item.category === 'municipal' ? 'MUN' : 'MM'}
+                </Text>
+              </View>
+              <View style={styles.bondInfo}>
+                <Text style={[styles.bondSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+                <Text style={[styles.bondName, { color: theme.colors.text.tertiary }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.bondRight}>
+              <Text style={[styles.bondPrice, { color: theme.colors.text.primary }]}>
+                ${item.price.toFixed(2)}
+              </Text>
+              <View style={[styles.bondRatingBadge, { backgroundColor: getRatingColor(item.creditRating) + '30' }]}>
+                <Text style={[styles.bondRatingText, { color: getRatingColor(item.creditRating) }]}>
+                  {item.creditRating}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Row: Yield, Duration, Maturity */}
+          <View style={styles.bondBottomRow}>
+            <View style={styles.bondMetric}>
+              <Text style={[styles.bondMetricLabel, { color: theme.colors.text.tertiary }]}>Yield</Text>
+              <Text style={[styles.bondYieldValue, { color: yieldColor }]}>
+                {item.yield.toFixed(2)}%
+              </Text>
+            </View>
+            <View style={styles.bondMetric}>
+              <Text style={[styles.bondMetricLabel, { color: theme.colors.text.tertiary }]}>Duration</Text>
+              <Text style={[styles.bondMetricValue, { color: theme.colors.text.primary }]}>
+                {item.duration.toFixed(1)}y
+              </Text>
+            </View>
+            <View style={styles.bondMetric}>
+              <Text style={[styles.bondMetricLabel, { color: theme.colors.text.tertiary }]}>Maturity</Text>
+              <Text style={[styles.bondMetricValue, { color: theme.colors.text.primary }]}>
+                {new Date(item.maturityDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
   const renderMarketItem = ({ item, index }: { item: any; index: number }) => {
     const isEvent = activeAssetTab === 'events';
     const isStock = activeAssetTab === 'stocks';
     const isPrivate = activeAssetTab === 'private';
     const isRWA = activeAssetTab === 'rwa';
+    const isBonds = activeAssetTab === 'bonds';
+
+    // Handle Fixed Income items
+    if (isBonds) {
+      return renderFixedIncomeItem({ item: item as FixedIncomeInstrument, index });
+    }
 
     // Handle RWA items
     if (isRWA) {
@@ -838,13 +950,14 @@ export function MarketsScreen() {
     );
   };
 
-  // Row 1: Asset type tabs
-  const assetTabs: { id: AssetTabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }> }[] = [
-    { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon },
-    { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon },
-    { id: 'rwa', label: 'RWA', IconComponent: RWAIcon },
-    { id: 'events', label: 'Events', IconComponent: EventsIcon },
-    { id: 'private', label: 'Private', IconComponent: PrivateIcon },
+  // Row 1: Asset type tabs with distinct colors
+  const assetTabs: { id: AssetTabType; label: string; IconComponent: React.FC<{ size?: number; color?: string; focused?: boolean }>; bgColor: string; activeColor: string }[] = [
+    { id: 'crypto', label: 'Crypto', IconComponent: CryptoIcon, bgColor: '#f7931a20', activeColor: '#f7931a' },
+    { id: 'stocks', label: 'Stocks', IconComponent: StocksIcon, bgColor: '#4CAF5020', activeColor: '#4CAF50' },
+    { id: 'bonds', label: 'Bonds', IconComponent: BondIcon, bgColor: '#2196F320', activeColor: '#2196F3' },
+    { id: 'rwa', label: 'RWA', IconComponent: RWAIcon, bgColor: '#9C27B020', activeColor: '#9C27B0' },
+    { id: 'events', label: 'Events', IconComponent: EventsIcon, bgColor: '#FF980020', activeColor: '#FF9800' },
+    { id: 'private', label: 'Private', IconComponent: PrivateIcon, bgColor: '#E91E6320', activeColor: '#E91E63' },
   ];
 
   // Row 2: View filter tabs
@@ -908,47 +1021,48 @@ export function MarketsScreen() {
         </View>
       </Animated.View>
 
-      {/* Row 1: Asset Type Tabs */}
+      {/* Asset Type Tabs - 2x3 Grid with Colors */}
       <Animated.View
         style={[
           styles.tabsContainer,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View style={[styles.tabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
+        <View style={styles.tabsGrid}>
           {assetTabs.map((tab) => {
             const isActive = activeAssetTab === tab.id;
             return (
               <Pressable
                 key={tab.id}
                 style={[
-                  styles.tab,
-                  isActive && [styles.tabActive, { backgroundColor: theme.colors.background.elevated }],
+                  styles.gridTab,
+                  {
+                    backgroundColor: isActive ? tab.activeColor : tab.bgColor,
+                    borderColor: isActive ? tab.activeColor : 'transparent',
+                  },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setActiveAssetTab(tab.id);
-                  // Reset view filter when switching asset tabs (except for RWA/Private which don't use filters)
-                  if (tab.id !== 'rwa' && tab.id !== 'private') {
+                  // Reset view filter when switching asset tabs (except for RWA/Private/Bonds which don't use filters)
+                  if (tab.id !== 'rwa' && tab.id !== 'private' && tab.id !== 'bonds') {
                     setActiveViewFilter('all');
                   }
                 }}
               >
                 <tab.IconComponent
-                  size={16}
+                  size={20}
                   focused={isActive}
-                  color={isActive ? theme.colors.accent.primary : theme.colors.text.tertiary}
+                  color={isActive ? '#FFFFFF' : tab.activeColor}
                 />
                 <Text
                   style={[
-                    styles.tabLabel,
-                    { color: theme.colors.text.tertiary },
-                    isActive && [styles.tabLabelActive, { color: theme.colors.text.primary }],
+                    styles.gridTabLabel,
+                    { color: isActive ? '#FFFFFF' : tab.activeColor },
                   ]}
                 >
                   {tab.label}
                 </Text>
-                {isActive && <View style={[styles.tabIndicator, { backgroundColor: theme.colors.accent.primary }]} />}
               </Pressable>
             );
           })}
@@ -956,7 +1070,7 @@ export function MarketsScreen() {
       </Animated.View>
 
       {/* Row 2: View Filter Tabs (only for crypto, stocks, events) */}
-      {activeAssetTab !== 'rwa' && activeAssetTab !== 'private' && (
+      {activeAssetTab !== 'rwa' && activeAssetTab !== 'private' && activeAssetTab !== 'bonds' && (
         <View style={styles.viewFiltersContainer}>
           <View style={[styles.viewFiltersWrapper, { backgroundColor: theme.colors.background.secondary }]}>
             {viewFilters.map((filter) => {
@@ -988,6 +1102,104 @@ export function MarketsScreen() {
                 </Pressable>
               );
             })}
+          </View>
+        </View>
+      )}
+
+      {/* Fixed Income / Bonds Subtabs */}
+      {activeAssetTab === 'bonds' && (
+        <View style={styles.subTabsContainer}>
+          <View style={[styles.subTabsWrapper, { backgroundColor: theme.colors.background.secondary }]}>
+            <Pressable
+              style={[
+                styles.subTab,
+                fixedIncomeSubTab === 'all' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFixedIncomeSubTab('all');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                fixedIncomeSubTab === 'all' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                All
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                fixedIncomeSubTab === 'treasuries' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFixedIncomeSubTab('treasuries');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                fixedIncomeSubTab === 'treasuries' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Treasury
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                fixedIncomeSubTab === 'corporate' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFixedIncomeSubTab('corporate');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                fixedIncomeSubTab === 'corporate' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Corporate
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                fixedIncomeSubTab === 'municipal' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFixedIncomeSubTab('municipal');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                fixedIncomeSubTab === 'municipal' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Muni
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTab,
+                fixedIncomeSubTab === 'money-market' && [styles.subTabActive, { backgroundColor: theme.colors.accent.glow }],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFixedIncomeSubTab('money-market');
+              }}
+            >
+              <Text style={[
+                styles.subTabLabel,
+                { color: theme.colors.text.tertiary },
+                fixedIncomeSubTab === 'money-market' && { color: theme.colors.accent.primary, fontWeight: '600' },
+              ]}>
+                Money Mkt
+              </Text>
+            </Pressable>
           </View>
         </View>
       )}
@@ -1232,6 +1444,25 @@ export function MarketsScreen() {
               <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>+1.23%</Text>
             </View>
           </>
+        ) : activeAssetTab === 'bonds' ? (
+          <>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Instruments</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>
+                {FIXED_INCOME_INSTRUMENTS.length}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>10Y Yield</Text>
+              <Text style={[styles.statValue, { color: theme.colors.text.primary }]}>4.52%</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.colors.text.tertiary }]}>Avg Yield</Text>
+              <Text style={[styles.statValue, { color: theme.colors.success.primary }]}>5.18%</Text>
+            </View>
+          </>
         ) : activeAssetTab === 'private' ? (
           privateSubTab === 'secondary-ats' ? (
             <>
@@ -1410,8 +1641,30 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
   },
+  tabsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  gridTab: {
+    width: (SCREEN_WIDTH - 32 - 20) / 3, // 3 columns with gaps
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 2,
+    gap: 6,
+  },
+  gridTabLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  // Keep old tab styles for backwards compatibility but unused
   tabsWrapper: {
     flexDirection: 'row',
     backgroundColor: MeruTheme.colors.background.secondary,
@@ -2015,5 +2268,89 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  // Fixed Income / Bond Card Styles
+  bondCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  bondTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  bondLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  bondCategoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  bondCategoryText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  bondInfo: {
+    flex: 1,
+  },
+  bondSymbol: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  bondName: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  bondRight: {
+    alignItems: 'flex-end',
+  },
+  bondPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  bondRatingBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  bondRatingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  bondBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: MeruTheme.colors.border.subtle,
+  },
+  bondMetric: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  bondMetricLabel: {
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  bondMetricValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bondYieldValue: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

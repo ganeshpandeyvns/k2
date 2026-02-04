@@ -6,7 +6,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type AssetType = 'crypto' | 'stock' | 'event';
+export type AssetType = 'crypto' | 'stock' | 'event' | 'fixed-income';
 
 export interface Holding {
   symbol: string;
@@ -132,6 +132,35 @@ const ASSET_META: Record<string, { name: string; color: string; assetType?: Asse
   // Stocks - Energy
   XOM: { name: 'Exxon Mobil', color: '#ED1C24', assetType: 'stock' },
   CVX: { name: 'Chevron Corp.', color: '#0066B2', assetType: 'stock' },
+
+  // Fixed Income - Treasuries
+  'TBILL-3M': { name: '3-Month Treasury Bill', color: '#2196F3', assetType: 'fixed-income' },
+  'UST-2Y': { name: '2-Year Treasury Note', color: '#2196F3', assetType: 'fixed-income' },
+  'UST-5Y': { name: '5-Year Treasury Note', color: '#2196F3', assetType: 'fixed-income' },
+  'UST-10Y': { name: '10-Year Treasury Note', color: '#2196F3', assetType: 'fixed-income' },
+  'TIPS-5Y': { name: '5-Year TIPS', color: '#2196F3', assetType: 'fixed-income' },
+
+  // Fixed Income - Corporate Investment Grade
+  'AAPL-4.375-29': { name: 'Apple Inc. 4.375% 2029', color: '#4CAF50', assetType: 'fixed-income' },
+  'MSFT-3.5-28': { name: 'Microsoft 3.5% 2028', color: '#4CAF50', assetType: 'fixed-income' },
+  'JPM-4.25-30': { name: 'JPMorgan 4.25% 2030', color: '#4CAF50', assetType: 'fixed-income' },
+  'JNJ-3.75-31': { name: 'Johnson & Johnson 3.75% 2031', color: '#4CAF50', assetType: 'fixed-income' },
+  'IG-BOND-ETF': { name: 'Investment Grade Bond Pool', color: '#4CAF50', assetType: 'fixed-income' },
+
+  // Fixed Income - Corporate High Yield
+  'HY-BOND-POOL': { name: 'High Yield Corporate Pool', color: '#FF9800', assetType: 'fixed-income' },
+  'NFLX-5.875-28': { name: 'Netflix 5.875% 2028', color: '#FF9800', assetType: 'fixed-income' },
+  'ENERGY-HY': { name: 'Energy Sector High Yield', color: '#FF9800', assetType: 'fixed-income' },
+
+  // Fixed Income - Municipal
+  'CA-GO-5-30': { name: 'California GO 5% 2030', color: '#9C27B0', assetType: 'fixed-income' },
+  'NYC-GO-4.5-29': { name: 'NYC GO 4.5% 2029', color: '#9C27B0', assetType: 'fixed-income' },
+  'TX-REV-4.75-31': { name: 'Texas Revenue 4.75% 2031', color: '#9C27B0', assetType: 'fixed-income' },
+
+  // Fixed Income - Money Market
+  'MM-PRIME': { name: 'Prime Money Market', color: '#00BCD4', assetType: 'fixed-income' },
+  'MM-GOVT': { name: 'Government Money Market', color: '#00BCD4', assetType: 'fixed-income' },
+  'USDC-YIELD': { name: 'USDC Yield Vault', color: '#00BCD4', assetType: 'fixed-income' },
 };
 
 export const usePortfolioStore = create<PortfolioState>()(
@@ -415,6 +444,10 @@ export const usePortfolioStore = create<PortfolioState>()(
             // Event contract holdings
             { symbol: 'FED-RATE-MAR', name: 'Fed Rate Cut - Mar', quantity: 50, avgCost: 0.35, color: '#f0b429', assetType: 'event' },
             { symbol: 'BTC-100K-Q1', name: 'BTC $100K Q1', quantity: 25, avgCost: 0.22, color: '#f7931a', assetType: 'event' },
+            // Fixed Income holdings
+            { symbol: 'UST-2Y', name: '2-Year Treasury Note', quantity: 10000, avgCost: 99.25, color: '#2196F3', assetType: 'fixed-income' },
+            { symbol: 'AAPL-4.375-29', name: 'Apple Inc. 4.375% 2029', quantity: 5000, avgCost: 96.80, color: '#4CAF50', assetType: 'fixed-income' },
+            { symbol: 'MM-GOVT', name: 'Government Money Market', quantity: 15000, avgCost: 1.00, color: '#00BCD4', assetType: 'fixed-income' },
           ],
           transactions: [
             // Crypto transactions

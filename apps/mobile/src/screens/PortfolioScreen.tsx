@@ -15,8 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useFundingStore } from '../store/fundingStore';
-import { usePortfolioStore, TradeTransaction } from '../store/portfolioStore';
+import { usePortfolioStore, TradeTransaction, AssetType } from '../store/portfolioStore';
 import { useTheme } from '../hooks/useTheme';
+import { FIXED_INCOME_INSTRUMENTS, getFixedIncomeBySymbol } from '../utils/mockFixedIncomeData';
 
 // Demo prices for all asset types (crypto, stocks, events)
 const DEMO_PRICES: Record<string, number> = {
@@ -51,13 +52,41 @@ const DEMO_PRICES: Record<string, number> = {
   'BTC-100K-Q1': 0.28,
   'ETH-ETF-APR': 0.65,
   'AI-BREAKTHROUGH': 0.55,
+  // Fixed Income (prices from mockFixedIncomeData)
+  'TBILL-3M': 98.75,
+  'UST-2Y': 99.25,
+  'UST-5Y': 97.50,
+  'UST-10Y': 94.80,
+  'TIPS-5Y': 101.25,
+  'AAPL-4.375-29': 96.80,
+  'MSFT-3.5-28': 95.25,
+  'JPM-4.25-30': 94.50,
+  'JNJ-3.75-31': 92.80,
+  'IG-BOND-ETF': 98.50,
+  'HY-BOND-POOL': 94.25,
+  'NFLX-5.875-28': 98.75,
+  'ENERGY-HY': 91.50,
+  'CA-GO-5-30': 102.50,
+  'NYC-GO-4.5-29': 99.75,
+  'TX-REV-4.75-31': 98.25,
+  'MM-PRIME': 1.00,
+  'MM-GOVT': 1.00,
+  'USDC-YIELD': 1.00,
 };
 
 type TabType = 'positions' | 'activity' | 'history';
+type AssetFilterType = 'all' | 'crypto' | 'stock' | 'fixed-income' | 'event';
+
+// Helper to get bond yield for display
+const getBondYield = (symbol: string): number | null => {
+  const bond = getFixedIncomeBySymbol(symbol);
+  return bond?.yield ?? null;
+};
 
 export function PortfolioScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('positions');
+  const [assetFilter, setAssetFilter] = useState<AssetFilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
   const theme = useTheme();
 
@@ -82,12 +111,19 @@ export function PortfolioScreen() {
   const totalPnlPercent = totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
 
   // Build positions from holdings
-  const positions = holdings.map((h) => {
+  const allPositions = holdings.map((h) => {
     const currentPrice = DEMO_PRICES[h.symbol] || 0;
-    const marketValue = h.quantity * currentPrice;
-    const costBasis = h.quantity * h.avgCost;
+    // For fixed income, quantity represents face value
+    const isFixedIncome = h.assetType === 'fixed-income';
+    const marketValue = isFixedIncome
+      ? (h.quantity * currentPrice) / 100 // Bond price is per $100 face value
+      : h.quantity * currentPrice;
+    const costBasis = isFixedIncome
+      ? (h.quantity * h.avgCost) / 100
+      : h.quantity * h.avgCost;
     const unrealizedPnl = marketValue - costBasis;
     const unrealizedPnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0;
+    const bondYield = isFixedIncome ? getBondYield(h.symbol) : null;
 
     return {
       instrument: `${h.symbol}-USD`,
@@ -100,48 +136,91 @@ export function PortfolioScreen() {
       unrealizedPnl: unrealizedPnl.toString(),
       unrealizedPnlPercent: unrealizedPnlPercent.toString(),
       color: h.color,
+      assetType: h.assetType || 'crypto',
+      bondYield,
     };
   });
+
+  // Filter positions based on asset type
+  const positions = assetFilter === 'all'
+    ? allPositions
+    : allPositions.filter((p) => p.assetType === assetFilter);
+
+  // Count by asset type for filter badges
+  const assetCounts = {
+    all: allPositions.length,
+    crypto: allPositions.filter((p) => p.assetType === 'crypto').length,
+    stock: allPositions.filter((p) => p.assetType === 'stock').length,
+    'fixed-income': allPositions.filter((p) => p.assetType === 'fixed-income').length,
+    event: allPositions.filter((p) => p.assetType === 'event').length,
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const renderPositionCard = ({ item }: { item: typeof positions[0] }) => (
-    <TouchableOpacity
-      style={[styles.positionCard, { backgroundColor: theme.colors.background.secondary }]}
-      onPress={() =>
-        navigation.navigate('InstrumentDetail' as never, {
-          instrumentId: item.instrument,
-        } as never)
+  const handlePositionPress = (item: typeof positions[0]) => {
+    if (item.assetType === 'fixed-income') {
+      // Find the fixed income instrument ID
+      const bond = getFixedIncomeBySymbol(item.symbol);
+      if (bond) {
+        navigation.navigate('FixedIncomeDetail' as never, { instrumentId: bond.id } as never);
       }
-    >
-      <View style={styles.positionLeft}>
-        <View style={[styles.positionIcon, { backgroundColor: item.color + '30' }]}>
-          <Text style={[styles.positionIconText, { color: item.color }]}>
-            {item.symbol[0]}
+    } else {
+      navigation.navigate('InstrumentDetail' as never, { instrumentId: item.instrument } as never);
+    }
+  };
+
+  const renderPositionCard = ({ item }: { item: typeof positions[0] }) => {
+    const isFixedIncome = item.assetType === 'fixed-income';
+
+    return (
+      <TouchableOpacity
+        style={[styles.positionCard, { backgroundColor: theme.colors.background.secondary }]}
+        onPress={() => handlePositionPress(item)}
+      >
+        <View style={styles.positionLeft}>
+          <View style={[styles.positionIcon, { backgroundColor: item.color + '30' }]}>
+            <Text style={[styles.positionIconText, { color: item.color }]}>
+              {isFixedIncome ? '📊' : item.symbol[0]}
+            </Text>
+          </View>
+          <View>
+            <Text style={[styles.positionSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
+            {isFixedIncome ? (
+              <View style={styles.bondInfoRow}>
+                <Text style={[styles.positionQty, { color: theme.colors.text.tertiary }]}>
+                  ${parseFloat(item.quantity).toLocaleString()} face
+                </Text>
+                {item.bondYield && (
+                  <Text style={[styles.bondYield, { color: theme.colors.success.primary }]}>
+                    {item.bondYield.toFixed(2)}% yield
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <Text style={[styles.positionQty, { color: theme.colors.text.tertiary }]}>
+                {parseFloat(item.quantity).toFixed(6)}
+              </Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.positionRight}>
+          <Text style={[styles.positionValue, { color: theme.colors.text.primary }]}>{formatCurrency(item.marketValue)}</Text>
+          <Text
+            style={[
+              styles.positionPnl,
+              { color: parseFloat(item.unrealizedPnl) >= 0 ? theme.colors.success.primary : theme.colors.error.primary },
+            ]}
+          >
+            {parseFloat(item.unrealizedPnl) >= 0 ? '+' : ''}
+            {formatCurrency(item.unrealizedPnl)} ({formatPercent(item.unrealizedPnlPercent)})
           </Text>
         </View>
-        <View>
-          <Text style={[styles.positionSymbol, { color: theme.colors.text.primary }]}>{item.symbol}</Text>
-          <Text style={[styles.positionQty, { color: theme.colors.text.tertiary }]}>{parseFloat(item.quantity).toFixed(6)}</Text>
-        </View>
-      </View>
-      <View style={styles.positionRight}>
-        <Text style={[styles.positionValue, { color: theme.colors.text.primary }]}>{formatCurrency(item.marketValue)}</Text>
-        <Text
-          style={[
-            styles.positionPnl,
-            { color: parseFloat(item.unrealizedPnl) >= 0 ? theme.colors.success.primary : theme.colors.error.primary },
-          ]}
-        >
-          {parseFloat(item.unrealizedPnl) >= 0 ? '+' : ''}
-          {formatCurrency(item.unrealizedPnl)} ({formatPercent(item.unrealizedPnlPercent)})
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const formatTxType = (type: string) => {
     const icons: Record<string, string> = {
@@ -233,6 +312,42 @@ export function PortfolioScreen() {
                 onRefresh={onRefresh}
                 tintColor={theme.colors.accent.primary}
               />
+            }
+            ListHeaderComponent={
+              <View style={styles.assetFilters}>
+                {(['all', 'crypto', 'stock', 'fixed-income', 'event'] as AssetFilterType[]).map((filter) => {
+                  const count = assetCounts[filter];
+                  if (filter !== 'all' && count === 0) return null;
+                  const labels: Record<AssetFilterType, string> = {
+                    all: 'All',
+                    crypto: 'Crypto',
+                    stock: 'Stocks',
+                    'fixed-income': 'Bonds',
+                    event: 'Events',
+                  };
+                  return (
+                    <TouchableOpacity
+                      key={filter}
+                      style={[
+                        styles.assetFilterChip,
+                        { backgroundColor: theme.colors.background.secondary },
+                        assetFilter === filter && { backgroundColor: theme.colors.accent.primary },
+                      ]}
+                      onPress={() => setAssetFilter(filter)}
+                    >
+                      <Text
+                        style={[
+                          styles.assetFilterText,
+                          { color: theme.colors.text.tertiary },
+                          assetFilter === filter && { color: theme.colors.text.inverse },
+                        ]}
+                      >
+                        {labels[filter]} ({count})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             }
             ListEmptyComponent={
               <View style={styles.emptyState}>
@@ -601,5 +716,33 @@ const styles = StyleSheet.create({
   },
   activityAmountNegative: {
     color: '#FF4D4D',
+  },
+  assetFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  assetFilterChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#1A1A1A',
+  },
+  assetFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  bondInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  bondYield: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#00D4AA',
   },
 });
