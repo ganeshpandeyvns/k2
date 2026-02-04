@@ -11,8 +11,8 @@
     {
       "file": "apps/mobile/src/screens/MarketsScreen.tsx",
       "addedAt": "2026-02-02T17:01:19.093Z",
-      "lastTested": "2026-02-03T05:04:12.921Z",
-      "testCount": 3,
+      "lastTested": "2026-02-03T05:33:12.699Z",
+      "testCount": 4,
       "lastResult": "passed",
       "mappedTests": [
         "__tests__/store/privateAccessStore.test.ts",
@@ -64,8 +64,8 @@
     {
       "file": "apps/mobile/regression/test-registry.json",
       "addedAt": "2026-02-02T20:55:32.661Z",
-      "lastTested": "2026-02-02T20:55:32.661Z",
-      "testCount": 1,
+      "lastTested": "2026-02-03T05:33:12.699Z",
+      "testCount": 2,
       "lastResult": "passed",
       "mappedTests": []
     },
@@ -114,8 +114,8 @@
     {
       "file": "apps/mobile/src/screens/InstrumentDetailScreen.tsx",
       "addedAt": "2026-02-03T05:04:12.921Z",
-      "lastTested": "2026-02-03T05:04:12.921Z",
-      "testCount": 1,
+      "lastTested": "2026-02-03T05:33:12.699Z",
+      "testCount": 2,
       "lastResult": "passed",
       "mappedTests": [
         "__tests__/screens/InstrumentDetailScreen.test.ts"
@@ -174,13 +174,13 @@
     {
       "file": "apps/mobile/src/utils/mockRWAData.ts",
       "addedAt": "2026-02-03T05:04:12.921Z",
-      "lastTested": "2026-02-03T05:04:12.921Z",
-      "testCount": 1,
+      "lastTested": "2026-02-03T05:33:12.699Z",
+      "testCount": 2,
       "lastResult": "passed",
       "mappedTests": [
         "__tests__/utils/mockRWAData.test.ts"
       ]
     }
   ],
-  "lastUpdated": "2026-02-03T05:04:12.926Z"
+  "lastUpdated": "2026-02-03T05:33:12.703Z"
 }
